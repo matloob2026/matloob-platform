@@ -1,0 +1,52 @@
+{
+  "name": "matloob-platform",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Matloob — the request-first marketplace platform. Buyers publish a need; suppliers respond with offers.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "postinstall": "prisma generate",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:seed": "tsx src/db/seed/index.ts",
+    "db:studio": "prisma studio",
+    "test": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.20.0",
+    "argon2": "^0.41.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.446.0",
+    "next": "^15.0.0",
+    "next-auth": "^5.0.0-beta.22",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "recharts": "^2.12.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.1.0",
+    "@types/node": "^22.7.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.11.0",
+    "eslint-config-next": "^15.0.0",
+    "postcss": "^8.4.47",
+    "prisma": "^5.20.0",
+    "tailwindcss": "^3.4.13",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
