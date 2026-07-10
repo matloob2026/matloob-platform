@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  direction: rtl;
+}
+
+body {
+  @apply bg-surface-muted text-text-900 antialiased;
+  font-family: "Tajawal", sans-serif;
+}
+
+/* Thin, unobtrusive scrollbars for admin data tables / sidebars */
+.admin-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.admin-scroll::-webkit-scrollbar-thumb {
+  background-color: theme("colors.border.strong");
+  border-radius: 999px;
+}

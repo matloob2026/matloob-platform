@@ -1,0 +1,771 @@
+// =====================================================================
+// MATLOOB — Database Schema
+// =====================================================================
+// Design principles followed throughout this schema:
+//
+// 1. NOTHING COUNTRY-SPECIFIC IS HARDCODED.
+//    Country, Currency, City, and Language are all DB-driven tables,
+//    not enums. Adding Egypt (or any market) is a data operation,
+//    never a code change.
+//
+// 2. EVERYTHING EDITABLE FROM THE ADMIN DASHBOARD IS ITS OWN TABLE.
+//    Homepage hero text, footer text, trust badges, stats, SEO tags,
+//    the logo, social links — all live in SiteSetting / PageContent /
+//    HomepageStat / TrustBadge tables, never in component code.
+//
+// 3. SOFT DELETES + TIMESTAMPS EVERYWHERE.
+//    `deletedAt` instead of hard deletes on user-generated content,
+//    so nothing is ever unrecoverably lost and audit trails stay intact.
+//
+// 4. UUIDs for all primary keys.
+//    Avoids leaking sequential IDs (how many requests/users exist),
+//    and makes multi-region / multi-tenant merges painless later.
+//
+// 5. TRANSLATABLE CONTENT uses a *Translation side-table pattern
+//    (e.g. CategoryTranslation) rather than jamming ar/en columns
+//    directly onto the parent — this scales to any number of
+//    languages without a migration.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =====================================================================
+// ENUMS
+// =====================================================================
+
+enum UserRole {
+  BUYER // publishes requests (the platform's primary user)
+  SUPPLIER // sends offers on requests
+  BOTH // a user can be both — most users start here
+  ADMIN
+  MODERATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  BANNED
+}
+
+enum RequestStatus {
+  DRAFT // saved but not published
+  PUBLISHED // live, visible, accepting offers
+  IN_PROGRESS // buyer has accepted an offer
+  FULFILLED // completed successfully
+  EXPIRED // passed its auto-expiry window
+  CLOSED_BY_BUYER
+  REMOVED_BY_ADMIN
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  EXPIRED
+}
+
+enum ConversationStatus {
+  OPEN
+  ARCHIVED
+  BLOCKED
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SMS
+  PUSH
+}
+
+enum NotificationType {
+  NEW_OFFER
+  OFFER_ACCEPTED
+  OFFER_REJECTED
+  NEW_MESSAGE
+  REQUEST_EXPIRING
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  SYSTEM_ANNOUNCEMENT
+  AI_SUGGESTION // reserved for future AI layer
+}
+
+enum ReportReason {
+  SPAM
+  SCAM_OR_FRAUD
+  INAPPROPRIATE_CONTENT
+  DUPLICATE
+  MISLEADING_PRICE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum MediaOwnerType {
+  REQUEST
+  USER_PROFILE
+  CATEGORY
+  PAGE_CONTENT
+  HOMEPAGE_HERO
+  SITE_LOGO
+  ADMIN_UPLOAD
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  COLOR
+  IMAGE_URL
+  RICH_TEXT
+}
+
+// =====================================================================
+// LOCALIZATION FOUNDATION
+// (Country / Currency / City / Language — never hardcoded in code)
+// =====================================================================
+
+model Country {
+  id            String   @id @default(uuid())
+  code          String   @unique // ISO 3166-1 alpha-2, e.g. "SA", "EG"
+  isActive      Boolean  @default(false) // platform can "launch" a country by flipping this
+  isDefault     Boolean  @default(false) // fallback country if none resolved from request
+  defaultLocale String   @default("ar") // e.g. "ar", "en"
+  phoneDialCode String? // e.g. "+966"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  translations CountryTranslation[]
+  currencies   CountryCurrency[]
+  cities       City[]
+  users        UserProfile[]
+  requests     Request[]
+
+  @@map("countries")
+}
+
+model CountryTranslation {
+  id        String   @id @default(uuid())
+  countryId String
+  locale    String // "ar" | "en" | ...
+  name      String // "المملكة العربية السعودية" / "Saudi Arabia"
+
+  country Country @relation(fields: [countryId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, locale])
+  @@map("country_translations")
+}
+
+model Currency {
+  id            String   @id @default(uuid())
+  code          String   @unique // ISO 4217, e.g. "SAR", "EGP"
+  symbol        String // "ر.س", "ج.م"
+  decimalDigits Int      @default(2)
+  createdAt     DateTime @default(now())
+
+  countries CountryCurrency[]
+  requests  Request[]
+
+  @@map("currencies")
+}
+
+// Join table: a country can (in theory) support more than one currency,
+// with exactly one marked default — avoids a rigid 1:1 assumption.
+model CountryCurrency {
+  id         String  @id @default(uuid())
+  countryId  String
+  currencyId String
+  isDefault  Boolean @default(true)
+
+  country  Country  @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [currencyId], references: [id], onDelete: Cascade)
+
+  @@unique([countryId, currencyId])
+  @@map("country_currencies")
+}
+
+model City {
+  id        String   @id @default(uuid())
+  countryId String
+  slug      String // URL-safe key, unique per country
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  latitude  Float?
+  longitude Float?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  country      Country           @relation(fields: [countryId], references: [id], onDelete: Cascade)
+  translations CityTranslation[]
+  requests     Request[]
+  profiles     UserProfile[]
+
+  @@unique([countryId, slug])
+  @@index([countryId, isActive])
+  @@map("cities")
+}
+
+model CityTranslation {
+  id     String @id @default(uuid())
+  cityId String
+  locale String
+  name   String // "الرياض" / "Riyadh"
+
+  city City @relation(fields: [cityId], references: [id], onDelete: Cascade)
+
+  @@unique([cityId, locale])
+  @@map("city_translations")
+}
+
+// =====================================================================
+// USERS & AUTH
+// =====================================================================
+// Auth strategy: credentials (email/phone + password) OR OAuth provider,
+// modeled so NextAuth.js (or a custom JWT service) can sit on top of
+// this without schema changes. See src/auth/README.md.
+
+model User {
+  id               String     @id @default(uuid())
+  email            String?    @unique
+  phone            String?    @unique
+  passwordHash     String? // null if OAuth-only account
+  role             UserRole   @default(BUYER)
+  status           UserStatus @default(PENDING_VERIFICATION)
+  emailVerifiedAt  DateTime?
+  phoneVerifiedAt  DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  deletedAt        DateTime? // soft delete
+
+  profile       UserProfile?
+  accounts      OAuthAccount[]
+  sessions      Session[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens     PasswordResetToken[]
+  requests      Request[]           @relation("RequestOwner")
+  offers        Offer[]             @relation("OfferOwner")
+  favorites     Favorite[]
+  notifications Notification[]
+  sentMessages  Message[]           @relation("MessageSender")
+  reportsFiled  Report[]            @relation("ReportedBy")
+  reportsAgainst Report[]           @relation("ReportedUser")
+  conversationParticipants ConversationParticipant[]
+  auditLogs     AdminAuditLog[]     @relation("AuditActor")
+
+  @@index([role, status])
+  @@map("users")
+}
+
+model UserProfile {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  displayName  String
+  avatarMediaId String?
+  bio          String?
+  countryId    String?
+  cityId       String?
+  companyName  String? // for supplier-type accounts
+  isVerifiedSupplier Boolean @default(false)
+  ratingAvg    Float    @default(0)
+  ratingCount  Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  country Country? @relation(fields: [countryId], references: [id])
+  city    City?    @relation(fields: [cityId], references: [id])
+  avatar  Media?   @relation(fields: [avatarMediaId], references: [id])
+
+  @@map("user_profiles")
+}
+
+// Supports Google/Apple/etc. login without touching the User model shape.
+model OAuthAccount {
+  id                String  @id @default(uuid())
+  userId            String
+  provider          String // "google" | "apple" | ...
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("oauth_accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  tokenHash    String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// Phase 3 — Part 1 (auth foundation). Never store the raw token, only
+// its SHA-256 hash (see src/auth/tokens.ts) — same rationale as
+// Session.tokenHash above: a DB leak must not hand out usable tokens.
+model EmailVerificationToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  email      String // snapshot of the address being verified
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// =====================================================================
+// CATEGORIES (fully translatable + admin-manageable + icon/image driven)
+// =====================================================================
+
+model Category {
+  id           String   @id @default(uuid())
+  slug         String   @unique
+  parentId     String? // supports sub-categories later without a migration
+  iconMediaId  String?
+  imageMediaId String?
+  colorHex     String? // optional accent color override per category
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  parent       Category?             @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children     Category[]            @relation("CategoryHierarchy")
+  translations CategoryTranslation[]
+  icon         Media?                @relation("CategoryIcon", fields: [iconMediaId], references: [id])
+  image        Media?                @relation("CategoryImage", fields: [imageMediaId], references: [id])
+  requests     Request[]
+
+  @@index([isActive, sortOrder])
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id          String  @id @default(uuid())
+  categoryId  String
+  locale      String
+  name        String // "عقارات" / "Real Estate"
+  description String?
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@map("category_translations")
+}
+
+// =====================================================================
+// REQUESTS — the core entity. "Publish a need" not "list a product".
+// =====================================================================
+
+model Request {
+  id           String         @id @default(uuid())
+  ownerId      String
+  categoryId   String
+  countryId    String
+  cityId       String?
+  currencyId   String?
+  title        String
+  description  String
+  budgetMin    Decimal?       @db.Decimal(12, 2)
+  budgetMax    Decimal?       @db.Decimal(12, 2)
+  status       RequestStatus  @default(DRAFT)
+  viewCount    Int            @default(0)
+  offerCount   Int            @default(0) // denormalized counter, kept in sync via service layer
+  publishedAt  DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  deletedAt    DateTime?
+
+  // Reserved for the future AI layer (see src/ai). Never populated by
+  // current business logic — purely additive columns for later use.
+  aiSuggestedCategoryId String?
+  aiQualityScore        Float?
+
+  owner        User            @relation("RequestOwner", fields: [ownerId], references: [id])
+  category     Category        @relation(fields: [categoryId], references: [id])
+  country      Country         @relation(fields: [countryId], references: [id])
+  city         City?           @relation(fields: [cityId], references: [id])
+  currency     Currency?       @relation(fields: [currencyId], references: [id])
+  media        Media[]         @relation("RequestMedia")
+  offers       Offer[]
+  favorites    Favorite[]
+  conversations Conversation[]
+  reports      Report[]
+
+  @@index([status, categoryId, countryId])
+  @@index([ownerId])
+  @@map("requests")
+}
+
+// =====================================================================
+// OFFERS — suppliers respond to a published request
+// =====================================================================
+
+model Offer {
+  id          String      @id @default(uuid())
+  requestId   String
+  supplierId  String
+  message     String
+  price       Decimal?    @db.Decimal(12, 2)
+  status      OfferStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  deletedAt   DateTime?
+
+  request  Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  supplier User    @relation("OfferOwner", fields: [supplierId], references: [id])
+
+  conversation Conversation?
+
+  @@unique([requestId, supplierId]) // one active offer per supplier per request
+  @@index([requestId, status])
+  @@map("offers")
+}
+
+// =====================================================================
+// MESSAGING — conversation is anchored to a Request+Offer pair
+// =====================================================================
+
+model Conversation {
+  id        String             @id @default(uuid())
+  requestId String
+  offerId   String?            @unique
+  status    ConversationStatus @default(OPEN)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  request      Request                    @relation(fields: [requestId], references: [id])
+  offer        Offer?                     @relation(fields: [offerId], references: [id])
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([requestId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String   @id @default(uuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String
+  isRead         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  deletedAt      DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id])
+  attachments  Media[]      @relation("MessageMedia")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+// =====================================================================
+// NOTIFICATIONS (multi-channel, extensible to AI-triggered types)
+// =====================================================================
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String
+  type      NotificationType
+  channel   NotificationChannel @default(IN_APP)
+  title     String
+  body      String
+  linkUrl   String?
+  isRead    Boolean             @default(false)
+  metadata  Json? // flexible payload (e.g. { requestId, offerId })
+  createdAt DateTime            @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// =====================================================================
+// FAVORITES
+// =====================================================================
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  requestId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  request Request @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, requestId])
+  @@map("favorites")
+}
+
+// =====================================================================
+// REPORTS (trust & safety)
+// =====================================================================
+
+model Report {
+  id            String       @id @default(uuid())
+  reporterId    String
+  reportedUserId String?
+  requestId     String?
+  reason        ReportReason
+  details       String?
+  status        ReportStatus @default(OPEN)
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+
+  reporter     User     @relation("ReportedBy", fields: [reporterId], references: [id])
+  reportedUser User?    @relation("ReportedUser", fields: [reportedUserId], references: [id])
+  request      Request? @relation(fields: [requestId], references: [id])
+
+  @@index([status])
+  @@map("reports")
+}
+
+// =====================================================================
+// MEDIA LIBRARY (single source of truth for every uploaded asset)
+// =====================================================================
+
+model Media {
+  id         String         @id @default(uuid())
+  ownerType  MediaOwnerType
+  url        String
+  altText    String?
+  width      Int?
+  height     Int?
+  sizeBytes  Int?
+  mimeType   String?
+  uploadedById String?
+  createdAt  DateTime       @default(now())
+  deletedAt  DateTime?
+
+  requests        Request[]     @relation("RequestMedia")
+  messages        Message[]     @relation("MessageMedia")
+  categoryIcons   Category[]    @relation("CategoryIcon")
+  categoryImages  Category[]    @relation("CategoryImage")
+  userProfiles    UserProfile[]
+  pageContents    PageContent[]
+  homepageStats   HomepageStat[]
+  trustBadges     TrustBadge[]
+  seoSettings     SeoSetting[]
+
+  @@index([ownerType])
+  @@map("media")
+}
+
+// =====================================================================
+// ADMIN-EDITABLE SITE CONTENT
+// (This is what makes the homepage "dynamic" instead of hardcoded.)
+// =====================================================================
+
+// Generic typed key-value store for small, atomic settings:
+// site logo URL, social links, contact email, feature flags, etc.
+// Grouped by `group` for a clean Admin Dashboard UI (e.g. "footer",
+// "hero", "seo_defaults", "branding").
+model SiteSetting {
+  id        String           @id @default(uuid())
+  group     String // "branding" | "footer" | "hero" | "seo" | ...
+  key       String // "logo_url" | "primary_color" | "contact_email"
+  valueType SettingValueType @default(STRING)
+  value     String // raw value; parsed per valueType in the service layer
+  updatedById String?
+  updatedAt DateTime         @updatedAt
+  createdAt DateTime         @default(now())
+
+  @@unique([group, key])
+  @@map("site_settings")
+}
+
+// Larger structured/translatable content blocks: hero headline, hero
+// subtext, CTA copy, "How It Works" steps, footer statement, etc.
+// One row per (page, section, locale) — the Admin Dashboard resolves
+// these into the homepage without a single hardcoded string in code.
+model PageContent {
+  id          String   @id @default(uuid())
+  page        String // "homepage" | "about" | ...
+  section     String // "hero" | "how_it_works" | "footer_statement" | "cta"
+  locale      String // "ar" | "en"
+  heading     String?
+  body        String?
+  ctaLabel    String?
+  ctaUrl      String?
+  mediaId     String?
+  extra       Json? // free-form structured data (e.g. step lists, badges)
+  isPublished Boolean  @default(true)
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  media Media? @relation(fields: [mediaId], references: [id])
+
+  @@unique([page, section, locale])
+  @@map("page_contents")
+}
+
+// Homepage stat counters ("+25,000 طلب منشور") — editable, orderable,
+// and localized independently of the surrounding page copy.
+model HomepageStat {
+  id           String   @id @default(uuid())
+  key          String   @unique // "requests_published" | "active_members" | ...
+  value        Int
+  iconMediaId  String?
+  sortOrder    Int      @default(0)
+  isActive     Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+
+  translations HomepageStatTranslation[]
+  icon         Media?                    @relation(fields: [iconMediaId], references: [id])
+
+  @@map("homepage_stats")
+}
+
+model HomepageStatTranslation {
+  id     String @id @default(uuid())
+  statId String
+  locale String
+  label  String // "طلب منشور" / "Requests Published"
+
+  stat HomepageStat @relation(fields: [statId], references: [id], onDelete: Cascade)
+
+  @@unique([statId, locale])
+  @@map("homepage_stat_translations")
+}
+
+// Trust badges in the footer ("دفع وتواصل آمن", "دعم فني 24/7") —
+// fully admin-manageable, can be added/removed/reordered without code.
+model TrustBadge {
+  id          String   @id @default(uuid())
+  iconMediaId String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  translations TrustBadgeTranslation[]
+  icon         Media?                  @relation(fields: [iconMediaId], references: [id])
+
+  @@map("trust_badges")
+}
+
+model TrustBadgeTranslation {
+  id      String @id @default(uuid())
+  badgeId String
+  locale  String
+  label   String
+
+  badge TrustBadge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([badgeId, locale])
+  @@map("trust_badge_translations")
+}
+
+// Social links footer row — platform + url + sort order, fully editable.
+model SocialLink {
+  id        String   @id @default(uuid())
+  platform  String // "twitter" | "instagram" | "snapchat" | "tiktok" | ...
+  url       String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+
+  @@map("social_links")
+}
+
+// =====================================================================
+// SEO (per-entity + global defaults, never hardcoded in components)
+// =====================================================================
+
+model SeoSetting {
+  id              String   @id @default(uuid())
+  entityType      String // "homepage" | "category" | "request" | "global"
+  entityId        String? // null for global/homepage-level defaults
+  locale          String
+  metaTitle       String?
+  metaDescription String?
+  ogImageMediaId  String?
+  canonicalUrl    String?
+  noIndex         Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+
+  ogImage Media? @relation(fields: [ogImageMediaId], references: [id])
+
+  @@unique([entityType, entityId, locale])
+  @@map("seo_settings")
+}
+
+// =====================================================================
+// ADMIN AUDIT LOG (who changed what, when — required for any
+// dashboard that edits live homepage/site content)
+// =====================================================================
+
+model AdminAuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String // "UPDATE_SITE_SETTING" | "PUBLISH_PAGE_CONTENT" | ...
+  entityType String
+  entityId   String?
+  before     Json?
+  after      Json?
+  createdAt  DateTime @default(now())
+
+  actor User @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("admin_audit_logs")
+}

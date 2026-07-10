@@ -1,0 +1,41 @@
+{
+  "_comment": "Static UI chrome strings ONLY (buttons, nav labels, form/validation messages, toasts). Homepage marketing copy (hero, footer statement, CTA, how-it-works) intentionally lives in the database (PageContent table) and is edited from the Admin Dashboard, NOT here. See docs/LOCALIZATION.md.",
+
+  "nav": {
+    "home": "الرئيسية",
+    "browseRequests": "تصفح الطلبات",
+    "categories": "التصنيفات",
+    "blog": "المدونة",
+    "howItWorks": "كيف يعمل مطلوب",
+    "contact": "تواصل معنا",
+    "login": "تسجيل دخول",
+    "signup": "إنشاء حساب"
+  },
+  "actions": {
+    "addRequest": "أضف طلبك",
+    "createRequest": "أنشئ طلبك",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "submit": "إرسال",
+    "loadMore": "عرض المزيد",
+    "seeAll": "عرض الكل"
+  },
+  "requestForm": {
+    "categoryPlaceholder": "اختر التصنيف",
+    "titlePlaceholder": "اكتب عنوان طلبك",
+    "descriptionPlaceholder": "اشرح طلبك بالتفصيل",
+    "budgetLabel": "الميزانية (اختياري)"
+  },
+  "status": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ، حاول مرة أخرى",
+    "empty": "لا توجد نتائج حالياً",
+    "success": "تم بنجاح"
+  },
+  "auth": {
+    "emailLabel": "البريد الإلكتروني",
+    "phoneLabel": "رقم الجوال",
+    "passwordLabel": "كلمة المرور",
+    "invalidCredentials": "بيانات الدخول غير صحيحة"
+  }
+}

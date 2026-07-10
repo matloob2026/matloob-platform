@@ -1,0 +1,41 @@
+{
+  "_comment": "Static UI chrome strings ONLY. Homepage marketing copy lives in the database (PageContent table). See docs/LOCALIZATION.md.",
+
+  "nav": {
+    "home": "Home",
+    "browseRequests": "Browse Requests",
+    "categories": "Categories",
+    "blog": "Blog",
+    "howItWorks": "How Matloob Works",
+    "contact": "Contact Us",
+    "login": "Log In",
+    "signup": "Sign Up"
+  },
+  "actions": {
+    "addRequest": "Add Your Request",
+    "createRequest": "Create Request",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "loadMore": "Load More",
+    "seeAll": "See All"
+  },
+  "requestForm": {
+    "categoryPlaceholder": "Choose a category",
+    "titlePlaceholder": "Give your request a title",
+    "descriptionPlaceholder": "Describe what you need in detail",
+    "budgetLabel": "Budget (optional)"
+  },
+  "status": {
+    "loading": "Loading...",
+    "error": "Something went wrong, please try again",
+    "empty": "No results yet",
+    "success": "Success"
+  },
+  "auth": {
+    "emailLabel": "Email",
+    "phoneLabel": "Phone Number",
+    "passwordLabel": "Password",
+    "invalidCredentials": "Invalid login credentials"
+  }
+}
