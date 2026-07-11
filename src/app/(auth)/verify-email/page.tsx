@@ -4,8 +4,52 @@ import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
+import { Input, FormField } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
+import { AuthHeader } from "@/components/auth/AuthHeader";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
+
+function ResendVerification() {
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  async function handleResend(e: React.FormEvent) {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      // Always resolves — the API never reveals whether the account
+      // exists or is already verified, see the route itself.
+      await apiFetch("/api/auth/resend-verification", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
+    } finally {
+      setSent(true);
+      setIsSubmitting(false);
+    }
+  }
+
+  if (sent) {
+    return (
+      <p className="mt-4 text-sm text-text-500">
+        إذا كان بريدك مرتبطاً بحساب غير مُفعّل، ستصلك رسالة تفعيل جديدة خلال دقائق.
+      </p>
+    );
+  }
+
+  return (
+    <form onSubmit={handleResend} className="mt-4 space-y-3 border-t border-border pt-4 text-right">
+      <p className="text-sm text-text-500">لم يصلك رابط التفعيل؟ أدخل بريدك لإعادة الإرسال.</p>
+      <FormField label="البريد الإلكتروني">
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      </FormField>
+      <Button type="submit" size="sm" variant="outline" disabled={isSubmitting} className="w-full">
+        {isSubmitting ? "جارٍ الإرسال..." : "إعادة إرسال رابط التفعيل"}
+      </Button>
+    </form>
+  );
+}
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -51,6 +95,7 @@ function VerifyEmailContent() {
               العودة لتسجيل الدخول
             </Button>
           </Link>
+          <ResendVerification />
         </>
       )}
     </Card>
@@ -60,6 +105,7 @@ function VerifyEmailContent() {
 export default function VerifyEmailPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <AuthHeader />
       <Suspense fallback={null}>
         <VerifyEmailContent />
       </Suspense>

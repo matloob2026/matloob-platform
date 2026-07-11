@@ -251,6 +251,22 @@ export class AuthService {
   }
 
   /**
+   * Resend the verification email for an account that registered but
+   * never completed (or lost) the original link. Always resolves
+   * successfully regardless of whether the email exists or is already
+   * verified — same anti-enumeration posture as requestPasswordReset
+   * below. Reuses sendVerificationEmail, which already invalidates any
+   * prior unconsumed token before issuing a new one.
+   */
+  async resendVerificationEmail(email: string): Promise<void> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+    if (!user || user.status !== "PENDING_VERIFICATION") return; // silently no-op
+
+    await this.sendVerificationEmail(user.id, normalizedEmail);
+  }
+
+  /**
    * Always resolves successfully whether or not the email exists, so
    * callers (the API route) can return an identical response either
    * way — this is the standard mitigation for account enumeration via

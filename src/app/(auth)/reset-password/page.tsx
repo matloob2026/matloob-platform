@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
+import { AuthHeader } from "@/components/auth/AuthHeader";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 
 function ResetPasswordForm() {
@@ -86,6 +87,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <AuthHeader />
       <Suspense fallback={null}>
         <ResetPasswordForm />
       </Suspense>

@@ -7,6 +7,8 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
+import { AuthHeader } from "@/components/auth/AuthHeader";
+import { OAuthPlaceholders } from "@/components/auth/OAuthPlaceholders";
 
 function LoginForm() {
   const router = useRouter();
@@ -90,6 +92,10 @@ function LoginForm() {
           </Link>
         </p>
       </form>
+
+      <div className="mt-5">
+        <OAuthPlaceholders />
+      </div>
     </Card>
   );
 }
@@ -97,6 +103,7 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <AuthHeader />
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>

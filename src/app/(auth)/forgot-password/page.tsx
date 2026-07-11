@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
+import { AuthHeader } from "@/components/auth/AuthHeader";
 import { apiFetch } from "@/lib/api-client";
 
 export default function ForgotPasswordPage() {
@@ -27,6 +28,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <AuthHeader />
       <Card className="mx-auto max-w-md">
         {sent ? (
           <div className="text-center">

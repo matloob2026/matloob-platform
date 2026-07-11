@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField, Select } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
+import { AuthHeader } from "@/components/auth/AuthHeader";
+import { OAuthPlaceholders } from "@/components/auth/OAuthPlaceholders";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 
 type Role = "BUYER" | "SUPPLIER" | "BOTH";
@@ -39,6 +41,7 @@ export default function RegisterPage() {
   if (registeredEmail) {
     return (
       <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+        <AuthHeader />
         <Card className="mx-auto max-w-md text-center">
           <h1 className="font-display text-xl font-extrabold text-navy-950">تحقق من بريدك الإلكتروني</h1>
           <p className="mt-3 text-sm leading-relaxed text-text-700">
@@ -55,6 +58,7 @@ export default function RegisterPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <AuthHeader />
       <Card className="mx-auto max-w-md">
         <form onSubmit={handleSubmit} className="space-y-5" dir="rtl">
           <div className="text-center">
@@ -119,6 +123,10 @@ export default function RegisterPage() {
             </Link>
           </p>
         </form>
+
+        <div className="mt-5">
+          <OAuthPlaceholders />
+        </div>
       </Card>
     </main>
   );
