@@ -596,6 +596,16 @@ model Media {
   sizeBytes  Int?
   mimeType   String?
   uploadedById String?
+  // Cloudinary integration (Phase 3): needed to actually delete the
+  // remote asset via Cloudinary's API, not just this row — deriving a
+  // public_id back out of a delivery URL is fragile, so it's stored
+  // directly at upload time.
+  cloudinaryPublicId String?
+  // Cloudinary integration (Phase 3): persisted display order for a
+  // request's image gallery — the implicit many-to-many "RequestMedia"
+  // join table Prisma generates for `requests`/media below has no room
+  // for extra columns, so this lives on Media itself instead.
+  sortOrder  Int            @default(0)
   createdAt  DateTime       @default(now())
   deletedAt  DateTime?
 

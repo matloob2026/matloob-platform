@@ -19,12 +19,14 @@ interface RequestOptions extends RequestInit {
 }
 
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { locale, headers, ...rest } = options;
+  const { locale, headers, body, ...rest } = options;
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
 
   const res = await fetch(path, {
     ...rest,
+    body,
     headers: {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(locale ? { "Accept-Language": locale } : {}),
       ...headers,
     },

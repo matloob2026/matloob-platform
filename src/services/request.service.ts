@@ -170,7 +170,7 @@ function requestInclude() {
     city: { include: { translations: true } },
     currency: true,
     owner: { include: { profile: { include: { avatar: true } } } },
-    media: true,
+    media: { orderBy: { sortOrder: "asc" } },
   } as const;
 }
 
@@ -217,11 +217,14 @@ function mapToDetail(row: NonNullable<RequestRow>): RequestDetail {
       ratingAvg: row.owner.profile?.ratingAvg ?? 0,
       ratingCount: row.owner.profile?.ratingCount ?? 0,
     },
-    media: row.media.map((m: { id: string; url: string; altText: string | null }) => ({
-      id: m.id,
-      url: m.url,
-      altText: m.altText ?? undefined,
-    })),
+    media: row.media.map(
+      (m: { id: string; url: string; altText: string | null; sortOrder: number }) => ({
+        id: m.id,
+        url: m.url,
+        altText: m.altText ?? undefined,
+        sortOrder: m.sortOrder,
+      })
+    ),
     expiresAt: row.expiresAt?.toISOString(),
   };
 }

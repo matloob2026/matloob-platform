@@ -93,6 +93,7 @@ export interface RequestMedia {
   id: string;
   url: string;
   altText?: string;
+  sortOrder: number;
 }
 
 export interface RequestSummary {

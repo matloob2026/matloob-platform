@@ -5,6 +5,8 @@ import { requestService } from "@/services/request.service";
 import { Card } from "@/components/ui/Card";
 import { RequestStatusBadge } from "@/components/requests/RequestStatusBadge";
 import { RequestOwnerActions } from "@/components/requests/RequestOwnerActions";
+import { RequestImageManager } from "@/components/media/RequestImageManager";
+import Image from "next/image";
 
 export async function generateMetadata({
   params,
@@ -56,6 +58,26 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
           {found.description}
         </p>
 
+        {!isOwner && found.media.length > 0 && (
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
+            {found.media.map((img) => (
+              <div
+                key={img.id}
+                className="relative h-24 w-full overflow-hidden rounded-lg border border-border sm:h-28"
+              >
+                <Image
+                  src={img.url}
+                  alt={img.altText ?? found.title}
+                  fill
+                  loading="lazy"
+                  sizes="(max-width: 640px) 33vw, 25vw"
+                  className="object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+
         <dl className="mt-6 grid grid-cols-2 gap-4 rounded-lg bg-surface-muted p-4 text-sm">
           <div>
             <dt className="text-text-400">الميزانية</dt>
@@ -80,6 +102,7 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
         </dl>
 
         {isOwner && <RequestOwnerActions requestId={found.id} status={found.status} />}
+        {isOwner && <RequestImageManager requestId={found.id} initialImages={found.media} />}
       </Card>
     </main>
   );

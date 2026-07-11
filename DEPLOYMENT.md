@@ -1,7 +1,10 @@
 # Deployment checklist — Phase 3 (Auth foundation + Request Management)
 
 Everything in Phase 3 — Part 1 (auth) and Part 2 (request management)
-is code-complete. The database migration (`prisma/migrations/20260101000000_init_auth_and_requests/migration.sql`)
+is code-complete. The database migrations (`prisma/migrations/20260101000000_init_auth_and_requests/migration.sql`
+and `prisma/migrations/20260201000000_add_media_cloudinary_fields/migration.sql`,
+the latter adding `sortOrder`/`cloudinaryPublicId` to `media` for the
+Cloudinary integration)
 was hand-authored directly from `prisma/schema.prisma` — the sandbox
 this project was developed in cannot reach `binaries.prisma.sh` (the
 Prisma engine download host), so `prisma migrate dev` could never run
@@ -68,7 +71,7 @@ and redeploy.
 
 ## Remaining commands (run in order, once deployed / on a machine with normal network access)
 
-The migration itself already exists and is verified — see the note
+The migrations themselves already exist and are verified — see the note
 above. Nothing needs to be generated; it only needs to be *applied*
 and confirmed against Vercel's real Postgres.
 
