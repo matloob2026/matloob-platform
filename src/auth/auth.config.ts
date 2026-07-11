@@ -3,23 +3,33 @@
  *
  * Per src/auth/README.md: Credentials provider backed by `passwordHash`
  * on `User`, JWT session strategy (not DB sessions) for
- * serverless/edge scalability. Google/Apple OAuth providers are left
- * as a documented follow-up (see the commented block below) — wiring
- * real OAuth client IDs is a product decision (which providers, which
- * markets) outside Phase 3 — Part 1's scope (email/password
- * foundation only).
+ * serverless/edge scalability. Google OAuth is implemented below,
+ * registered only when GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are set.
+ * Apple OAuth remains a documented follow-up (see the TODO in the
+ * providers array) — a product decision (which markets) outside this
+ * feature's scope.
+ *
+ * No PrismaAdapter is used: this project's schema uses its own
+ * `OAuthAccount`/`Session`/`EmailVerificationToken` models (different
+ * shape than NextAuth's official adapter schema), so account
+ * linking for Google is done manually in the `signIn`/`jwt` callbacks
+ * via `AuthService.loginWithGoogle`, not an adapter. This is a
+ * standard, documented NextAuth pattern for JWT-strategy + custom
+ * schemas.
  *
  * This file must stay edge-compatible (no direct Prisma/Node-only
  * imports at the top level) per NextAuth v5 convention: `auth.config.ts`
  * (providers + callbacks) is imported by middleware, while `auth.ts`
  * (this + PrismaAdapter, if/when added) is the Node-only entry point
  * used by route handlers and server components. AuthService itself
- * runs in the Credentials `authorize()` callback, which NextAuth only
- * ever executes in the Node runtime, not in edge middleware.
+ * runs in the Credentials `authorize()` callback and the Google
+ * `signIn`/`jwt` callbacks, which NextAuth only ever executes in the
+ * Node runtime, not in edge middleware.
  */
 
 import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import { authService, AuthError } from "@/services/auth.service";
 
 export const authConfig: NextAuthConfig = {
@@ -76,20 +86,59 @@ export const authConfig: NextAuthConfig = {
       },
     }),
 
-    // TODO (post–Phase 3 foundation, product decision needed): Google +
-    // Apple OAuth, writing into the OAuthAccount table already present
-    // in prisma/schema.prisma. Sketch, once client IDs exist:
-    //
-    //   Google({
-    //     clientId: process.env.GOOGLE_CLIENT_ID,
-    //     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    //   }),
-    //
-    // No schema change needed to add this later — OAuthAccount already
-    // models it (see prisma/schema.prisma).
+    // Only registered when both env vars are present, so a deploy
+    // without Google OAuth configured yet doesn't crash NextAuth at
+    // startup — the UI's Google button (OAuthPlaceholders.tsx) is
+    // always rendered, but this provider silently doesn't exist server
+    // side until GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are set.
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          Google({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
+
+    // TODO (future, product decision needed): Apple OAuth. Same
+    // pattern as Google above — OAuthAccount already models it, no
+    // schema change needed when this is added.
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    /**
+     * For Google sign-in, resolve (or create) the internal User via
+     * AuthService — this is the OAuth equivalent of the Credentials
+     * provider's authorize() above. Runs before `jwt`.
+     */
+    async signIn({ user, account }) {
+      if (account?.provider === "google") {
+        if (!user.email) return false;
+        try {
+          await authService.loginWithGoogle({
+            email: user.email,
+            providerAccountId: account.providerAccountId,
+            displayName: user.name ?? undefined,
+          });
+        } catch (err) {
+          if (err instanceof AuthError) return false;
+          throw err;
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, account }) {
+      if (account?.provider === "google" && user?.email) {
+        // signIn() above already created/linked the account — just
+        // look up the resolved internal user so the token carries OUR
+        // id/role, not Google's own `sub`.
+        const resolved = await authService.getAuthenticatedUserByEmail(user.email);
+        if (resolved) {
+          token.id = resolved.id;
+          token.role = resolved.role;
+        }
+        return token;
+      }
+
       if (user) {
         token.id = user.id;
         token.role = (user as { role?: string }).role;

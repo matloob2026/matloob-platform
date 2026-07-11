@@ -94,7 +94,7 @@ function LoginForm() {
       </form>
 
       <div className="mt-5">
-        <OAuthPlaceholders />
+        <OAuthPlaceholders callbackUrl={callbackUrl} />
       </div>
     </Card>
   );

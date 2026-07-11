@@ -31,6 +31,7 @@
 import { prisma } from "@/lib/prisma";
 import { mailer } from "@/lib/mailer";
 import type { Mailer } from "@/lib/mailer";
+import { verificationEmailTemplate, passwordResetEmailTemplate } from "@/lib/mailer/templates";
 import { hashPassword, verifyPassword, needsRehash, MIN_PASSWORD_LENGTH } from "@/auth/password";
 import {
   generateEmailVerificationToken,
@@ -84,9 +85,6 @@ export interface AuthenticatedUser {
   role: UserRole;
   displayName: string;
 }
-
-const EMAIL_VERIFICATION_SUBJECT = "أكّد بريدك الإلكتروني في مطلوب"; // "Confirm your email on Matloob"
-const PASSWORD_RESET_SUBJECT = "إعادة تعيين كلمة المرور في مطلوب"; // "Reset your password on Matloob"
 
 function verificationLink(rawToken: string): string {
   const base = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
@@ -170,10 +168,7 @@ export class AuthService {
 
     await this.mailerImpl.send({
       to: email,
-      subject: EMAIL_VERIFICATION_SUBJECT,
-      text: `مرحباً بك في مطلوب! لتفعيل حسابك، افتح الرابط التالي خلال 24 ساعة:\n${verificationLink(
-        token.raw
-      )}`,
+      ...verificationEmailTemplate(verificationLink(token.raw)),
     });
   }
 
@@ -251,6 +246,114 @@ export class AuthService {
   }
 
   /**
+   * Read-only lookup used by the `jwt` callback after `signIn` has
+   * already resolved/linked the account — avoids re-running
+   * loginWithGoogle's writes a second time per sign-in.
+   */
+  async getAuthenticatedUserByEmail(email: string): Promise<AuthenticatedUser | null> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: { profile: true },
+    });
+    if (!user) return null;
+    return {
+      id: user.id,
+      email: normalizedEmail,
+      role: user.role,
+      displayName: user.profile?.displayName ?? normalizedEmail,
+    };
+  }
+
+  /**
+   * Resolve (or create) the internal User for a Google sign-in, called
+   * from the NextAuth `signIn`/`jwt` callbacks in auth.config.ts — this
+   * is the OAuth equivalent of `login()` above: same account-status
+   * checks, same return shape, but no password involved since Google
+   * already verified the account owns this email address.
+   *
+   * - Existing user with this email: link the OAuthAccount (idempotent
+   *   — safe to call on every sign-in) and, if they'd registered by
+   *   email but never verified it, mark them verified/ACTIVE now
+   *   (Google's own verification satisfies ours).
+   * - No existing user: create one, already ACTIVE/verified, plus a
+   *   UserProfile from the Google profile's display name.
+   *
+   * Uses `OAuthAccount`, already in prisma/schema.prisma — no schema
+   * change needed for this.
+   */
+  async loginWithGoogle(params: {
+    email: string;
+    providerAccountId: string;
+    displayName?: string;
+  }): Promise<AuthenticatedUser> {
+    const normalizedEmail = params.email.trim().toLowerCase();
+
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      include: { profile: true },
+    });
+
+    if (existing) {
+      if (existing.status === "SUSPENDED" || existing.status === "BANNED") {
+        throw new AuthError("This account is not able to sign in.", "ACCOUNT_SUSPENDED");
+      }
+
+      await prisma.oAuthAccount.upsert({
+        where: {
+          provider_providerAccountId: { provider: "google", providerAccountId: params.providerAccountId },
+        },
+        create: {
+          userId: existing.id,
+          provider: "google",
+          providerAccountId: params.providerAccountId,
+        },
+        update: {},
+      });
+
+      if (existing.status === "PENDING_VERIFICATION") {
+        await prisma.user.update({
+          where: { id: existing.id },
+          data: { status: "ACTIVE", emailVerifiedAt: new Date() },
+        });
+      }
+
+      await prisma.user.update({ where: { id: existing.id }, data: { lastLoginAt: new Date() } });
+
+      return {
+        id: existing.id,
+        email: normalizedEmail,
+        role: existing.role,
+        displayName: existing.profile?.displayName ?? params.displayName ?? normalizedEmail,
+      };
+    }
+
+    const created = await prisma.user.create({
+      data: {
+        email: normalizedEmail,
+        role: "BUYER",
+        status: "ACTIVE",
+        emailVerifiedAt: new Date(),
+        lastLoginAt: new Date(),
+        profile: {
+          create: { displayName: params.displayName?.trim() || normalizedEmail },
+        },
+        accounts: {
+          create: { provider: "google", providerAccountId: params.providerAccountId },
+        },
+      },
+      include: { profile: true },
+    });
+
+    return {
+      id: created.id,
+      email: normalizedEmail,
+      role: created.role,
+      displayName: created.profile?.displayName ?? normalizedEmail,
+    };
+  }
+
+  /**
    * Resend the verification email for an account that registered but
    * never completed (or lost) the original link. Always resolves
    * successfully regardless of whether the email exists or is already
@@ -286,10 +389,7 @@ export class AuthService {
 
     await this.mailerImpl.send({
       to: normalizedEmail,
-      subject: PASSWORD_RESET_SUBJECT,
-      text: `تلقينا طلباً لإعادة تعيين كلمة المرور. الرابط صالح لمدة ساعة واحدة:\n${passwordResetLink(
-        token.raw
-      )}\n\nإذا لم تطلب ذلك، يمكنك تجاهل هذه الرسالة.`,
+      ...passwordResetEmailTemplate(passwordResetLink(token.raw)),
     });
   }
 
