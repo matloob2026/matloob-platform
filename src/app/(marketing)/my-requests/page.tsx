@@ -23,7 +23,7 @@ export default async function MyRequestsPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
-      <SiteHeader />
+      <SiteHeader title="طلباتي" />
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 flex items-center justify-between">
           <div>

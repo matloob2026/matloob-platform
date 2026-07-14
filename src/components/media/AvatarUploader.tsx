@@ -12,12 +12,14 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(initialAvatarUrl);
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justUpdated, setJustUpdated] = useState<"uploaded" | "removed" | null>(null);
 
   async function handleFileSelected(fileList: FileList | null) {
     const file = fileList?.[0];
     if (!file) return;
     setIsBusy(true);
     setError(null);
+    setJustUpdated(null);
     try {
       const formData = new FormData();
       formData.set("file", file);
@@ -26,6 +28,7 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
         body: formData,
       });
       setAvatarUrl(data.url);
+      setJustUpdated("uploaded");
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.error.message : "تعذر رفع الصورة.");
@@ -39,9 +42,11 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
     if (!window.confirm("هل تريد حذف صورة الملف الشخصي؟")) return;
     setIsBusy(true);
     setError(null);
+    setJustUpdated(null);
     try {
       await apiFetch("/api/media/avatar", { method: "DELETE" });
       setAvatarUrl(undefined);
+      setJustUpdated("removed");
       router.refresh();
     } catch (err) {
       setError(err instanceof ApiRequestError ? err.error.message : "تعذر حذف الصورة.");
@@ -61,6 +66,16 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
       </div>
 
       {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+      {justUpdated === "uploaded" && (
+        <p className="flex items-center gap-1 text-xs font-semibold text-teal-700">
+          <span aria-hidden="true">✓</span> تم تحديث الصورة فوراً
+        </p>
+      )}
+      {justUpdated === "removed" && (
+        <p className="flex items-center gap-1 text-xs font-semibold text-teal-700">
+          <span aria-hidden="true">✓</span> تم حذف الصورة
+        </p>
+      )}
 
       <input
         ref={fileInputRef}

@@ -34,7 +34,7 @@ export default async function CreateRequestPage({
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
-      <SiteHeader />
+      <SiteHeader title="إنشاء طلب" />
       <div className="mx-auto mb-8 max-w-2xl text-center">
         <h1 className="font-display text-2xl font-extrabold text-navy-950 sm:text-3xl">
           بدل ما تدور... اطلبها

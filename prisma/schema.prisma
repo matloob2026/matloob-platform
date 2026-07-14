@@ -280,6 +280,13 @@ model UserProfile {
   countryId    String?
   cityId       String?
   companyName  String? // for supplier-type accounts
+  // Profile UX (Phase: navigation/profile polish) — deliberately
+  // separate from User.phone, which is tied to phone verification/auth
+  // and has its own uniqueness constraint. This is just a
+  // display/contact field the user can set freely, with no
+  // verification semantics.
+  contactPhone String?
+  preferredContactMethod String? // e.g. "EMAIL" | "PHONE" | "WHATSAPP" — validated at the API layer, not a DB enum, to keep this additive and low-risk
   isVerifiedSupplier Boolean @default(false)
   ratingAvg    Float    @default(0)
   ratingCount  Int      @default(0)

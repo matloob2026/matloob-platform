@@ -42,7 +42,7 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
-      <SiteHeader />
+      <SiteHeader title={found.title} />
       <Card className="mx-auto max-w-2xl">
         <div className="mb-3 flex items-start justify-between gap-3">
           <h1 className="font-display text-xl font-extrabold text-navy-950 sm:text-2xl">

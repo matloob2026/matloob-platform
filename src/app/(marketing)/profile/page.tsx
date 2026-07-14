@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth/auth";
-import { prisma } from "@/lib/prisma";
+import { profileService } from "@/services/profile.service";
+import { getLocationOptions } from "@/lib/profile-location-options";
 import { Card } from "@/components/ui/Card";
 import { AvatarUploader } from "@/components/media/AvatarUploader";
+import { ProfileForm } from "@/components/profile/ProfileForm";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
@@ -16,21 +18,34 @@ export default async function ProfilePage() {
     redirect("/login?callbackUrl=/profile");
   }
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { userId: session.user.id },
-    include: { avatar: true },
-  });
+  const [profile, locationOptions] = await Promise.all([
+    profileService.getProfile(session.user.id),
+    getLocationOptions(),
+  ]);
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
-      <SiteHeader />
-      <Card className="mx-auto max-w-md text-center">
-        <h1 className="font-display text-xl font-extrabold text-navy-950">الملف الشخصي</h1>
-        <p className="mt-1 text-sm text-text-500">{profile?.displayName ?? session.user.email}</p>
-
-        <div className="mt-6">
-          <AvatarUploader initialAvatarUrl={profile?.avatar?.url} />
+      <SiteHeader title="الملف الشخصي" />
+      <Card className="mx-auto max-w-md">
+        <div className="text-center">
+          <h1 className="font-display text-xl font-extrabold text-navy-950">الملف الشخصي</h1>
+          <p className="mt-1 text-sm text-text-500">{profile?.displayName ?? session.user.email}</p>
         </div>
+
+        <div className="mt-6 flex justify-center">
+          <AvatarUploader initialAvatarUrl={profile?.avatarUrl} />
+        </div>
+
+        <ProfileForm
+          initialValues={{
+            displayName: profile?.displayName ?? "",
+            contactPhone: profile?.contactPhone ?? "",
+            cityId: profile?.cityId ?? "",
+            bio: profile?.bio ?? "",
+            preferredContactMethod: profile?.preferredContactMethod ?? "",
+          }}
+          locationOptions={locationOptions}
+        />
       </Card>
     </main>
   );
