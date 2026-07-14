@@ -12,6 +12,8 @@ const RegisterSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  console.log("[REGISTER ROUTE ENTERED]");
+
   const body = await request.json().catch(() => null);
   const parsed = RegisterSchema.safeParse(body);
 
@@ -25,9 +27,11 @@ export async function POST(request: Request) {
   }
 
   try {
+    console.log("[CALLING AUTH SERVICE]");
     const user = await authService.register(parsed.data);
+    console.log("[REGISTER COMPLETED]");
     return NextResponse.json(
-      { data: { id: user.id, email: user.email, role: user.role } },
+      { data: { id: user.id, email: user.email, role: user.role, status: user.status } },
       { status: 201 }
     );
   } catch (err) {

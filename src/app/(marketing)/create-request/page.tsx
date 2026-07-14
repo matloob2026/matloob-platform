@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth/auth";
 import { RequestForm } from "@/components/requests/RequestForm";
 import { getRequestFormOptions } from "@/lib/request-form-options";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
   title: "أنشئ طلبك | مطلوب",
@@ -16,7 +17,7 @@ export default async function CreateRequestPage({
 }) {
   const session = await auth();
   if (!session?.user?.id) {
-    redirect("/login?callbackUrl=/create-request");
+    redirect("/login");
   }
 
   const options = await getRequestFormOptions();
@@ -33,6 +34,7 @@ export default async function CreateRequestPage({
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <SiteHeader />
       <div className="mx-auto mb-8 max-w-2xl text-center">
         <h1 className="font-display text-2xl font-extrabold text-navy-950 sm:text-3xl">
           بدل ما تدور... اطلبها

@@ -3,14 +3,18 @@
 import { signIn } from "next-auth/react";
 
 /**
- * Google is now fully wired to NextAuth (see src/auth/auth.config.ts —
+ * Google is fully wired to NextAuth (see src/auth/auth.config.ts —
  * registered only when GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET are set;
  * clicking this when it isn't configured server-side just surfaces
  * NextAuth's normal "no such provider" error on /login, same as any
- * misconfigured provider). Apple stays a disabled placeholder — see
- * the TODO in auth.config.ts for the real wiring point when that's
- * implemented (OAuthAccount already models it, no schema change
- * needed).
+ * misconfigured provider). Styled to match Google's own official
+ * Sign-In button branding (white surface, subtle border, full-color
+ * "G" logo, Google's exact brand colors) instead of a generic
+ * greyscale button, so it reads as a real, active sign-in option.
+ *
+ * Apple stays a disabled placeholder — see the TODO in auth.config.ts
+ * for the real wiring point when that's implemented (OAuthAccount
+ * already models it, no schema change needed).
  */
 export function OAuthPlaceholders({ callbackUrl }: { callbackUrl?: string }) {
   return (
@@ -20,19 +24,33 @@ export function OAuthPlaceholders({ callbackUrl }: { callbackUrl?: string }) {
         أو
         <span className="h-px flex-1 bg-border" />
       </div>
+
       <button
         type="button"
-        onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/my-requests" })}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-semibold text-navy-950 hover:bg-surface-muted"
+        onClick={() => signIn("google", { callbackUrl: callbackUrl ?? "/" })}
+        className="flex w-full items-center justify-center gap-3 rounded-lg border border-[#dadce0] bg-white px-4 py-2.5 text-sm font-medium text-[#3c4043] shadow-sm transition-shadow hover:shadow-md active:bg-[#f8f9fa]"
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true">
           <path
-            fill="currentColor"
-            d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81Z"
+            fill="#FFC107"
+            d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917Z"
+          />
+          <path
+            fill="#FF3D00"
+            d="m6.306 14.691 6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691Z"
+          />
+          <path
+            fill="#4CAF50"
+            d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0 1 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44Z"
+          />
+          <path
+            fill="#1976D2"
+            d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917Z"
           />
         </svg>
         المتابعة عبر Google
       </button>
+
       <button
         type="button"
         disabled

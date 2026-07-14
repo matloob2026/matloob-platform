@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { RequestStatusBadge } from "@/components/requests/RequestStatusBadge";
 import { RequestOwnerActions } from "@/components/requests/RequestOwnerActions";
+import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
   title: "طلباتي | مطلوب",
@@ -22,6 +23,7 @@ export default async function MyRequestsPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <SiteHeader />
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 flex items-center justify-between">
           <div>

@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Metadata } from "next";
 import "@/styles/marketing.css";
 import { LegacyHomepageScripts } from "@/components/marketing/LegacyHomepageScripts";
+import { HomepageAuthNav } from "@/components/marketing/HomepageAuthNav";
 
 export const metadata: Metadata = {
   title: "مطلوب | قولنا إيه اللي محتاجه",
@@ -41,6 +42,7 @@ export default function HomePage() {
     <>
       <div className="matloob-marketing-root" dangerouslySetInnerHTML={{ __html: bodyHtml }} />
       <LegacyHomepageScripts />
+      <HomepageAuthNav />
     </>
   );
 }

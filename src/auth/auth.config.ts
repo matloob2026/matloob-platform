@@ -33,6 +33,20 @@ import Google from "next-auth/providers/google";
 import { authService, AuthError } from "@/services/auth.service";
 
 export const authConfig: NextAuthConfig = {
+  // Vercel deployments can have multiple valid hostnames (production
+  // domain, preview URLs, etc.), and the actual request's Host header
+  // is the only reliable source for "where are we actually running
+  // right now" — NOT a static NEXTAUTH_URL/AUTH_URL env var, which is
+  // easy to leave pointing at an old deployment. Without this,
+  // NextAuth computes its own internal base URL for the *final*
+  // post-Google-consent redirect from that static env var instead of
+  // the request that's actually happening, which is exactly how the
+  // Google OAuth flow can successfully reach Google and come back, but
+  // then redirect the browser to a deployment that no longer exists
+  // (DEPLOYMENT_NOT_FOUND). This does not affect the Credentials
+  // provider or any application redirect logic — only which host
+  // NextAuth itself trusts when building its own redirect target.
+  trustHost: true,
   // NextAuth v5 auto-detects an `AUTH_SECRET` env var by convention,
   // but this project's documented convention (see .env.example and
   // NEXTAUTH_URL in auth.service.ts) is the older NEXTAUTH_-prefixed
@@ -141,14 +155,14 @@ export const authConfig: NextAuthConfig = {
 
       if (user) {
         token.id = user.id;
-        token.role = (user as { role?: string }).role;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        (session.user as typeof session.user & { role?: string }).role = token.role as string;
+        session.user.id = token.id ?? "";
+        session.user.role = token.role;
       }
       return session;
     },
