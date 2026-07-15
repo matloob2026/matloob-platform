@@ -153,12 +153,12 @@ export function RequestImageManager({
           type="button"
           variant="outline"
           size="sm"
-          disabled={isUploading || images.length >= 8}
+          disabled={isUploading || images.length >= 10}
           onClick={() => fileInputRef.current?.click()}
         >
           {isUploading ? "جارٍ الرفع..." : "إضافة صور"}
         </Button>
-        <span className="mr-2 text-xs text-text-400">JPEG/PNG/WEBP/GIF، حتى 5 ميجابايت لكل صورة، بحد أقصى 8 صور</span>
+        <span className="mr-2 text-xs text-text-400">JPEG/PNG/WEBP/GIF، حتى 5 ميجابايت لكل صورة، بحد أقصى 10 صور</span>
       </div>
     </div>
   );

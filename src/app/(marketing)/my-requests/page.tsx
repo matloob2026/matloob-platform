@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth/auth";
@@ -7,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { RequestStatusBadge } from "@/components/requests/RequestStatusBadge";
 import { RequestOwnerActions } from "@/components/requests/RequestOwnerActions";
+import { CreatedToast } from "@/components/requests/CreatedToast";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
@@ -23,6 +25,9 @@ export default async function MyRequestsPage() {
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
+      <Suspense fallback={null}>
+        <CreatedToast />
+      </Suspense>
       <SiteHeader title="طلباتي" />
       <div className="mx-auto max-w-3xl">
         <div className="mb-8 flex items-center justify-between">

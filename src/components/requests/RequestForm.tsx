@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Select, FormField } from "@/components/ui/Field";
 import { Card } from "@/components/ui/Card";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
+import { ImageDropzone, type StagedImage } from "@/components/media/ImageDropzone";
 import type { RequestDetail } from "@/types/domain";
 import type { RequestFormOptions } from "@/lib/request-form-options";
 
@@ -41,6 +42,7 @@ const EMPTY_VALUES: RequestFormValues = {
 export function RequestForm({ mode, requestId, options, initialValues }: RequestFormProps) {
   const router = useRouter();
   const [values, setValues] = useState<RequestFormValues>({ ...EMPTY_VALUES, ...initialValues });
+  const [stagedImages, setStagedImages] = useState<StagedImage[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -78,7 +80,22 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
             budgetMax,
           }),
         });
-        router.push(`/requests/${data.id}`);
+
+        // Request is already saved at this point — image upload
+        // failures are surfaced but don't block navigating away, since
+        // the request itself succeeded (existing media endpoint,
+        // uploaded sequentially so sortOrder comes out correct).
+        for (const staged of stagedImages) {
+          try {
+            const formData = new FormData();
+            formData.set("file", staged.file);
+            await apiFetch(`/api/media/requests/${data.id}`, { method: "POST", body: formData });
+          } catch {
+            setFormError("تم نشر طلبك، لكن تعذر رفع بعض الصور. يمكنك إضافتها لاحقاً من صفحة الطلب.");
+          }
+        }
+
+        router.push("/my-requests?created=1");
       } else {
         const { data } = await apiFetch<{ data: RequestDetail }>(`/api/requests/${requestId}`, {
           method: "PATCH",
@@ -220,6 +237,12 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
             ))}
           </Select>
         </FormField>
+
+        {mode === "create" && (
+          <FormField label="صور الطلب (اختياري)">
+            <ImageDropzone images={stagedImages} onChange={setStagedImages} />
+          </FormField>
+        )}
 
         <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
           {isSubmitting

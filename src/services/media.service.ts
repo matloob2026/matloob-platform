@@ -45,7 +45,7 @@ export function mediaServiceErrorStatus(code: MediaServiceError["code"]): number
 // Requirements: "Maximum file size", "Allowed image types".
 export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5 MB
 export const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
-export const MAX_REQUEST_IMAGES = 8;
+export const MAX_REQUEST_IMAGES = 10;
 
 function assertValidImage(file: { size: number; type: string }) {
   if (!isCloudinaryConfigured()) {
