@@ -41,6 +41,16 @@ import {
 } from "@/auth/tokens";
 import type { UserRole } from "@/types/domain";
 
+/**
+ * Single configuration point for whether new accounts must verify
+ * their email before signing in. Currently OFF — new accounts go
+ * straight to ACTIVE and can log in immediately. To re-enable the
+ * mandatory verification flow later, flip this back to `true`; every
+ * place that needs to check it (register, login) reads this constant,
+ * so no other logic needs to change.
+ */
+const REQUIRE_EMAIL_VERIFICATION = false;
+
 // ---------------------------------------------------------------------
 // Errors — typed so API routes can map each one to the right HTTP status
 // without string-matching error messages.
@@ -114,7 +124,6 @@ export class AuthService {
    * never through self-registration.
    */
   async register(input: RegisterInput): Promise<RegisteredUser> {
-    console.log("[auth.register] ENTER register()");
     const email = input.email.trim().toLowerCase();
 
     if (input.password.length < MIN_PASSWORD_LENGTH) {
@@ -124,12 +133,10 @@ export class AuthService {
       );
     }
 
-    console.log("[auth.register] Looking up existing user for email:", email);
     const existing = await prisma.user.findUnique({ where: { email } });
-    console.log("[auth.register] Existing user lookup result:", existing ? { id: existing.id, status: existing.status } : null);
 
     if (existing) {
-      if (existing.status === "PENDING_VERIFICATION") {
+      if (REQUIRE_EMAIL_VERIFICATION && existing.status === "PENDING_VERIFICATION") {
         // Same email, never verified — do NOT create a second account
         // and do NOT tell them "already exists" (that's a dead end for
         // them). Behave like most major platforms: silently resend a
@@ -147,7 +154,8 @@ export class AuthService {
         email,
         passwordHash,
         role: input.role ?? "BUYER",
-        status: "PENDING_VERIFICATION",
+        status: REQUIRE_EMAIL_VERIFICATION ? "PENDING_VERIFICATION" : "ACTIVE",
+        emailVerifiedAt: REQUIRE_EMAIL_VERIFICATION ? undefined : new Date(),
         profile: {
           create: {
             displayName: input.displayName,
@@ -155,11 +163,11 @@ export class AuthService {
         },
       },
     });
-    console.log("[auth.register] User successfully created. User ID:", user.id);
 
-    await this.sendVerificationEmail(user.id, email);
+    if (REQUIRE_EMAIL_VERIFICATION) {
+      await this.sendVerificationEmail(user.id, email);
+    }
 
-    console.log("[auth.register] register() completed successfully for user:", user.id);
     return { id: user.id, email, role: user.role, status: "created" };
   }
 
@@ -170,14 +178,11 @@ export class AuthService {
    * works (prevents an old, possibly-leaked link from staying valid).
    */
   async sendVerificationEmail(userId: string, email: string): Promise<void> {
-    console.log("[auth.sendVerificationEmail] ENTER sendVerificationEmail() for user:", userId, email);
-
     await prisma.emailVerificationToken.deleteMany({
       where: { userId, consumedAt: null },
     });
 
     const token = generateEmailVerificationToken();
-    console.log("[auth.sendVerificationEmail] Verification token successfully generated. Expires:", token.expiresAt);
 
     await prisma.emailVerificationToken.create({
       data: {
@@ -187,18 +192,12 @@ export class AuthService {
         expiresAt: token.expiresAt,
       },
     });
-    console.log("[auth.sendVerificationEmail] Token successfully stored in database.");
-
-    console.log("[auth.sendVerificationEmail] Selected mailer implementation:", this.mailerImpl.constructor.name);
-    console.log("[auth.sendVerificationEmail] RESEND_FROM_EMAIL value:", JSON.stringify(process.env.RESEND_FROM_EMAIL));
-    console.log("[auth.sendVerificationEmail] RESEND_API_KEY exists:", Boolean(process.env.RESEND_API_KEY));
 
     try {
       await this.mailerImpl.send({
         to: email,
         ...verificationEmailTemplate(verificationLink(token.raw)),
       });
-      console.log("[auth.sendVerificationEmail] mailer.send() resolved successfully for:", email);
     } catch (err) {
       console.error(
         "[auth.sendVerificationEmail] mailer.send() threw an exception:",
@@ -256,7 +255,7 @@ export class AuthService {
     if (user.status === "SUSPENDED" || user.status === "BANNED") {
       throw new AuthError("This account is not able to sign in.", "ACCOUNT_SUSPENDED");
     }
-    if (user.status === "PENDING_VERIFICATION") {
+    if (REQUIRE_EMAIL_VERIFICATION && user.status === "PENDING_VERIFICATION") {
       throw new AuthError("Please verify your email before signing in.", "ACCOUNT_NOT_VERIFIED");
     }
 

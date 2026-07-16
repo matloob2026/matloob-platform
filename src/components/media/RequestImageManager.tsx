@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
+import { useToast } from "@/components/ui/ToastProvider";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import type { RequestMedia } from "@/types/domain";
 
@@ -15,6 +17,8 @@ export function RequestImageManager({
   initialImages: RequestMedia[];
 }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [images, setImages] = useState<RequestMedia[]>(
     [...initialImages].sort((a, b) => a.sortOrder - b.sortOrder)
@@ -39,8 +43,11 @@ export function RequestImageManager({
         setImages((prev) => [...prev, data]);
       }
       router.refresh();
+      showToast("تم رفع الصورة", "success");
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر رفع الصورة.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر رفع الصورة.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -73,15 +80,25 @@ export function RequestImageManager({
   }
 
   async function handleDelete(mediaId: string) {
-    if (!window.confirm("هل تريد حذف هذه الصورة؟")) return;
+    const confirmed = await confirm({
+      title: "حذف الصورة",
+      message: "هل تريد حذف هذه الصورة؟",
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
+
     setIsBusy(true);
     setError(null);
     try {
       await apiFetch(`/api/media/${mediaId}`, { method: "DELETE" });
       setImages((prev) => prev.filter((img) => img.id !== mediaId));
+      showToast("تم حذف الصورة", "success");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر حذف الصورة.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر حذف الصورة.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsBusy(false);
     }

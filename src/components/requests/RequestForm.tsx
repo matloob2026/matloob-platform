@@ -46,6 +46,7 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [formError, setFormError] = useState<string | null>(null);
+  const [justPublished, setJustPublished] = useState(false);
 
   const citiesForCountry = useMemo(
     () => options.cities.filter((c) => c.countryId === values.countryId),
@@ -95,7 +96,9 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
           }
         }
 
-        router.push("/my-requests?created=1");
+        setJustPublished(true);
+        router.refresh();
+        return;
       } else {
         const { data } = await apiFetch<{ data: RequestDetail }>(`/api/requests/${requestId}`, {
           method: "PATCH",
@@ -126,8 +129,33 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
     }
   }
 
+  function handleCreateAnother() {
+    setValues({ ...EMPTY_VALUES });
+    setStagedImages([]);
+    setFormError(null);
+    setFieldErrors({});
+    setJustPublished(false);
+  }
+
   return (
     <Card className="mx-auto max-w-2xl">
+      {mode === "create" && justPublished ? (
+        <div dir="rtl" className="flex flex-col items-center py-8 text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-50 text-3xl text-teal-600">
+            ✓
+          </span>
+          <h2 className="mt-4 font-display text-xl font-extrabold text-navy-950">تم نشر طلبك بنجاح</h2>
+          <p className="mt-2 text-sm text-text-500">سيبدأ الموردون المناسبون بالتواصل معك قريباً.</p>
+          <div className="mt-6 flex w-full max-w-xs flex-col gap-3">
+            <Button size="lg" className="w-full" onClick={handleCreateAnother}>
+              إنشاء طلب جديد
+            </Button>
+            <Button variant="outline" size="lg" className="w-full" onClick={() => router.push("/")}>
+              العودة للرئيسية
+            </Button>
+          </div>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-5" dir="rtl">
         {formError && (
           <p className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm font-semibold text-red-700">
@@ -252,6 +280,7 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
               : "حفظ التعديلات"}
         </Button>
       </form>
+      )}
     </Card>
   );
 }

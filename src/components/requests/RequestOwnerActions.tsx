@@ -4,24 +4,38 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
+import { useToast } from "@/components/ui/ToastProvider";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import type { RequestStatus } from "@/types/domain";
 
 export function RequestOwnerActions({ requestId, status }: { requestId: string; status: RequestStatus }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleDelete() {
-    if (!window.confirm("هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+    const confirmed = await confirm({
+      title: "حذف الطلب",
+      message: "هل أنت متأكد من حذف هذا الطلب؟ لا يمكن التراجع عن هذا الإجراء.",
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
+
     setIsBusy(true);
     setError(null);
     try {
       await apiFetch(`/api/requests/${requestId}`, { method: "DELETE" });
+      showToast("تم حذف الطلب", "success");
       router.push("/my-requests");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر حذف الطلب.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر حذف الطلب.";
+      setError(message);
+      showToast(message, "error");
       setIsBusy(false);
     }
   }
@@ -31,23 +45,35 @@ export function RequestOwnerActions({ requestId, status }: { requestId: string; 
     setError(null);
     try {
       await apiFetch(`/api/requests/${requestId}/publish`, { method: "POST" });
+      showToast("تم نشر الطلب", "success");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر نشر الطلب.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر نشر الطلب.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsBusy(false);
     }
   }
 
   async function handleClose() {
-    if (!window.confirm("هل تريد إغلاق هذا الطلب؟ لن يتمكن الموردون من تقديم عروض جديدة بعد الإغلاق.")) return;
+    const confirmed = await confirm({
+      title: "إغلاق الطلب",
+      message: "هل تريد إغلاق هذا الطلب؟ لن يتمكن الموردون من تقديم عروض جديدة بعد الإغلاق.",
+      confirmLabel: "إغلاق",
+    });
+    if (!confirmed) return;
+
     setIsBusy(true);
     setError(null);
     try {
       await apiFetch(`/api/requests/${requestId}/close`, { method: "POST" });
+      showToast("تم إغلاق الطلب", "success");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر إغلاق الطلب.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر إغلاق الطلب.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsBusy(false);
     }

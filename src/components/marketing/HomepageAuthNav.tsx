@@ -62,7 +62,7 @@ export function HomepageAuthNav() {
   if (!portalContainer || status !== "authenticated" || !session?.user) return null;
 
   return createPortal(
-    <UserMenu name={session.user.name ?? session.user.email ?? "حسابي"} imageUrl={session.user.image} />,
+    <UserMenu name={session.user.name ?? session.user.email ?? "حسابي"} email={session.user.email} imageUrl={session.user.image} />,
     portalContainer
   );
 }

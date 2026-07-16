@@ -4,10 +4,14 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
+import { useToast } from "@/components/ui/ToastProvider";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 
 export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | undefined>(initialAvatarUrl);
   const [isBusy, setIsBusy] = useState(false);
@@ -29,9 +33,12 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
       });
       setAvatarUrl(data.url);
       setJustUpdated("uploaded");
+      showToast("تم رفع الصورة", "success");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر رفع الصورة.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر رفع الصورة.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsBusy(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -39,7 +46,14 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
   }
 
   async function handleRemove() {
-    if (!window.confirm("هل تريد حذف صورة الملف الشخصي؟")) return;
+    const confirmed = await confirm({
+      title: "حذف الصورة",
+      message: "هل تريد حذف صورة الملف الشخصي؟",
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
+
     setIsBusy(true);
     setError(null);
     setJustUpdated(null);
@@ -47,12 +61,23 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
       await apiFetch("/api/media/avatar", { method: "DELETE" });
       setAvatarUrl(undefined);
       setJustUpdated("removed");
+      showToast("تم حذف الصورة", "success");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر حذف الصورة.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر حذف الصورة.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsBusy(false);
     }
+  }
+
+  function handleSavePhoto() {
+    // The image already auto-uploads on selection — this button exists
+    // because users expect an explicit confirmation action even when
+    // autosave is already in effect (removes ambiguity/psychological
+    // uncertainty about whether the change "took").
+    showToast("تم حفظ الصورة", "success");
   }
 
   return (
@@ -100,6 +125,9 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
           </Button>
         )}
       </div>
+      <Button type="button" variant="primary" size="sm" disabled={isBusy || !avatarUrl} onClick={handleSavePhoto}>
+        حفظ الصورة
+      </Button>
       <p className="text-xs text-text-400">JPEG/PNG/WEBP/GIF، حتى 5 ميجابايت</p>
     </div>
   );

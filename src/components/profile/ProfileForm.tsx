@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Select, FormField } from "@/components/ui/Field";
+import { useToast } from "@/components/ui/ToastProvider";
 import { apiFetch, ApiRequestError } from "@/lib/api-client";
 import type { LocationOptions } from "@/lib/profile-location-options";
 
@@ -29,6 +30,7 @@ export function ProfileForm({
   locationOptions: LocationOptions;
 }) {
   const router = useRouter();
+  const { showToast } = useToast();
   const [values, setValues] = useState<ProfileFormValues>(initialValues);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,9 +58,12 @@ export function ProfileForm({
         }),
       });
       setSaved(true);
+      showToast("تم حفظ الملف الشخصي", "success");
       router.refresh();
     } catch (err) {
-      setError(err instanceof ApiRequestError ? err.error.message : "تعذر حفظ التغييرات.");
+      const message = err instanceof ApiRequestError ? err.error.message : "تعذر حفظ التغييرات.";
+      setError(message);
+      showToast(message, "error");
     } finally {
       setIsSubmitting(false);
     }

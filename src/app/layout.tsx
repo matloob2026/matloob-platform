@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import { AuthSessionProvider } from "@/components/providers/AuthSessionProvider";
+import { ToastProvider } from "@/components/ui/ToastProvider";
+import { ConfirmDialogProvider } from "@/components/ui/ConfirmDialogProvider";
 
 export const metadata: Metadata = {
   title: "Matloob",
@@ -38,7 +40,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* eslint-enable @next/next/no-page-custom-font */}
       </head>
       <body>
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <AuthSessionProvider>
+          <ToastProvider>
+            <ConfirmDialogProvider>{children}</ConfirmDialogProvider>
+          </ToastProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

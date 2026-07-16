@@ -57,7 +57,9 @@ export default function RegisterPage() {
       <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
         <AuthHeader />
         <Card className="mx-auto max-w-md text-center">
-          <h1 className="font-display text-xl font-extrabold text-navy-950">تحقق من بريدك الإلكتروني</h1>
+          <h1 className="font-display text-xl font-extrabold text-navy-950">
+            {resultStatus === "resent" ? "تحقق من بريدك الإلكتروني" : "تم إنشاء حسابك بنجاح"}
+          </h1>
           {resultStatus === "resent" ? (
             <p className="mt-3 text-sm leading-relaxed text-text-700">
               حسابك بهذا البريد موجود بالفعل ولم يتم تفعيله بعد. أرسلنا لك رابط تفعيل جديد إلى{" "}
@@ -65,8 +67,8 @@ export default function RegisterPage() {
             </p>
           ) : (
             <p className="mt-3 text-sm leading-relaxed text-text-700">
-              أرسلنا رابط تفعيل إلى <span className="font-semibold">{registeredEmail}</span>. افتح
-              الرابط لتفعيل حسابك، ثم سجّل دخولك.
+              حسابك جاهز الآن. يمكنك تسجيل الدخول مباشرة باستخدام{" "}
+              <span className="font-semibold">{registeredEmail}</span>.
             </p>
           )}
           <Link href="/login" className="mt-6 inline-block">
