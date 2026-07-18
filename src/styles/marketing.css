@@ -298,9 +298,12 @@
   .matloob-marketing-root .stat-num{font-family:'Cairo',sans-serif; font-weight:800; font-size:20px; color:var(--navy-950);}
   .matloob-marketing-root .stat-label{font-size:12.5px; color:var(--text-500); font-weight:500;}
 
-  /* ---------- static photo collage, flanking both sides of the hero text ---------- */
+  /* ---------- static photo collage, flanking both sides of the hero text ----------
+     Restored to match the provided reference design: plain static photos
+     (no rotation, no hover motion, no captions/overlays), arranged in a
+     clean non-overlapping grid on each side. */
   .matloob-marketing-root .hero-side{
-    position:absolute; top:0; width:250px; height:520px; z-index:2; pointer-events:none;
+    position:absolute; top:0; width:260px; height:360px; z-index:2; pointer-events:none;
   }
   .matloob-marketing-root .hero-side .float-card{pointer-events:auto;}
   .matloob-marketing-root .hero-side-left{left:-16px; transform-origin: top left;}
@@ -313,44 +316,21 @@
     box-shadow:var(--shadow-card);
     border:5px solid rgba(255,255,255,.92);
     background:var(--navy-900);
-    cursor:pointer;
-    transform:rotate(var(--rot));
-    transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease, border-color .3s ease;
-  }
-  .matloob-marketing-root .float-card:hover{
-    transform:translateY(-8px) rotate(var(--rot)) scale(1.035);
-    box-shadow:0 30px 58px -12px rgba(10,30,70,.42);
-    border-color:var(--teal-300);
-    z-index:20;
   }
   .matloob-marketing-root .float-card img{width:100%; height:100%; object-fit:cover; display:block;}
-  .matloob-marketing-root .float-card .sheen{
-    position:absolute; inset:0;
-    background:linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 45%, rgba(10,20,45,.28) 100%);
-  }
-  .matloob-marketing-root .float-card .caption{
-    position:absolute; bottom:0; right:0; left:0;
-    padding:10px 13px 11px;
-    background:linear-gradient(0deg, rgba(8,18,40,.85), rgba(8,18,40,0));
-    color:#fff; font-size:12px; font-weight:700; text-align:right;
-    display:flex; align-items:center; justify-content:space-between;
-  }
-  .matloob-marketing-root .float-card .caption .cnt{
-    font-size:10px; font-weight:600; background:rgba(255,255,255,.18);
-    padding:3px 8px; border-radius:999px; backdrop-filter:blur(4px);
-  }
 
-  /* left cluster: villa (large), phone (small accent), laptop (medium), sofa (medium) */
-  .matloob-marketing-root .sc-villa{  width:225px; height:185px; top:0;    left:6px;  --rot:-5deg; z-index:3;}
-  .matloob-marketing-root .sc-phone{  width:100px; height:128px; top:120px; left:170px; --rot:6deg;  z-index:5;}
-  .matloob-marketing-root .sc-laptop{ width:185px; height:135px; top:196px; left:0;   --rot:-3deg; z-index:2;}
-  .matloob-marketing-root .sc-sofa{   width:180px; height:150px; top:340px; left:46px; --rot:4deg;  z-index:4;}
+  /* left cluster: villa + phone (row 1), laptop + interior (row 2), wide sofa panorama (row 3) */
+  .matloob-marketing-root .sc-villa{    width:156px; height:135px; top:0;   left:0;}
+  .matloob-marketing-root .sc-phone{    width:96px;  height:135px; top:0;   left:164px;}
+  .matloob-marketing-root .sc-laptop{   width:122px; height:105px; top:143px; left:0;}
+  .matloob-marketing-root .sc-interior{ width:130px; height:105px; top:143px; left:130px;}
+  .matloob-marketing-root .sc-sofa{     width:260px; height:85px;  top:256px; left:0;}
 
-  /* right cluster: car (large), tech (small accent), dog (medium), travel (small) */
-  .matloob-marketing-root .sc-car{    width:230px; height:170px; top:6px;   right:2px;  --rot:4deg;  z-index:3;}
-  .matloob-marketing-root .sc-tech{   width:100px; height:126px; top:130px; right:172px; --rot:-6deg; z-index:5;}
-  .matloob-marketing-root .sc-dog{    width:195px; height:180px; top:200px; right:12px; --rot:-3deg; z-index:2;}
-  .matloob-marketing-root .sc-travel{ width:150px; height:126px; top:352px; right:98px; --rot:5deg;  z-index:4;}
+  /* right cluster: tech (edge) + car (inner), row 1; travel (edge) + dog (inner), row 2 */
+  .matloob-marketing-root .sc-tech{   width:96px;  height:135px; top:0;      right:0;}
+  .matloob-marketing-root .sc-car{    width:156px; height:135px; top:0;      right:104px;}
+  .matloob-marketing-root .sc-travel{ width:130px; height:105px; top:143px;  right:0;}
+  .matloob-marketing-root .sc-dog{    width:122px; height:105px; top:143px;  right:138px;}
 
   /* ===================== SECTION HEADS ===================== */
   .matloob-marketing-root .section-head{display:flex; align-items:end; justify-content:space-between; margin-bottom:32px;}
@@ -524,42 +504,18 @@
     .matloob-marketing-root .header-actions .btn-primary{display:none;}
     .matloob-marketing-root .mobile-menu-btn{display:flex;}
 
-    /* ---- Hero: rebuilt for mobile — starts right after header, images
-         flank the title on both sides (not stacked below), search/CTA
-         break out to full width beneath. No animation. ---- */
+    /* ---- Hero: tablet — the full side-image composition scales down
+         proportionally (same static, non-overlapping layout as
+         desktop), anchored to the outer edges so it never encroaches
+         on the centered hero content. Fully hidden on mobile — see the
+         dedicated mobile breakpoint below. ---- */
     .matloob-marketing-root section.hero{padding:0;}
     .matloob-marketing-root section.hero .wrap{padding:0 18px;}
     .matloob-marketing-root .hero-flanked{
-      position:relative; display:block; min-height:auto; padding:14px 0 8px;
+      position:relative; display:flex; min-height:auto; padding:14px 0 8px;
     }
     .matloob-marketing-root .hero-glow{width:260px; height:260px; top:-10px;}
-    .matloob-marketing-root .hero-copy{max-width:100%; padding:0 68px; position:relative; z-index:5;}
-    .matloob-marketing-root .hero-copy .search-bar,
-    .matloob-marketing-root .hero-copy .hero-ctas{
-      margin-left:-68px; margin-right:-68px; max-width:none;
-    }
-
-    .matloob-marketing-root .hero-side{
-      order:unset; position:absolute; top:0; width:auto; height:auto;
-      transform:none !important; display:flex; flex-direction:column;
-      align-items:center; gap:8px; z-index:2; margin:0;
-    }
-    .matloob-marketing-root .hero-side-left{left:-6px;}
-    .matloob-marketing-root .hero-side-right{right:-6px;}
-    .matloob-marketing-root .hero-side .float-card{
-      position:static; border-width:3px; border-radius:12px;
-      box-shadow:var(--shadow-sm);
-    }
-    .matloob-marketing-root .hero-side .float-card:hover{
-      transform:rotate(var(--rot)); box-shadow:var(--shadow-sm); border-color:rgba(255,255,255,.92);
-    }
-    .matloob-marketing-root .hero-side .float-card .caption{display:none;}
-    /* show only 2 images per side on mobile */
-    .matloob-marketing-root .sc-phone, .matloob-marketing-root .sc-tech, .matloob-marketing-root .sc-sofa, .matloob-marketing-root .sc-travel{display:none;}
-    .matloob-marketing-root .sc-villa{width:68px; height:60px;}
-    .matloob-marketing-root .sc-laptop{width:62px; height:52px;}
-    .matloob-marketing-root .sc-car{width:70px; height:56px;}
-    .matloob-marketing-root .sc-dog{width:64px; height:60px;}
+    .matloob-marketing-root .hero-side{transform:scale(.42);}
 
     .matloob-marketing-root .eyebrow{font-size:10.5px; padding:5px 12px; margin-bottom:12px;}
     .matloob-marketing-root h1.hero-title{font-size:23px; line-height:1.42; margin-bottom:12px;}
@@ -664,22 +620,17 @@
 
   /* ---- Phone tier ---- */
   @media (max-width: 560px){
+    .matloob-marketing-root .hero-side{display:none;}
     .matloob-marketing-root section.hero .wrap{padding:0 16px;}
-    .matloob-marketing-root .hero-copy{padding:0 58px;}
-    .matloob-marketing-root .hero-copy .search-bar,
-    .matloob-marketing-root .hero-copy .hero-ctas{margin-left:-58px; margin-right:-58px;}
+    .matloob-marketing-root .hero-copy{max-width:100%; padding:0;}
     .matloob-marketing-root h1.hero-title{font-size:20px; line-height:1.45; margin-bottom:10px;}
     .matloob-marketing-root p.hero-sub{font-size:12px; margin-bottom:16px;}
     .matloob-marketing-root .eyebrow{font-size:10px; padding:5px 10px; margin-bottom:10px;}
     .matloob-marketing-root .search-select{padding:0 6px; gap:4px; font-size:11px;}
     .matloob-marketing-root .search-select svg{width:10px; height:10px;}
-    .matloob-marketing-root .hero-side{gap:6px;}
-    .matloob-marketing-root .hero-side-left{left:-4px;}
-    .matloob-marketing-root .hero-side-right{right:-4px;}
-    .matloob-marketing-root .sc-villa{width:52px; height:46px;}
-    .matloob-marketing-root .sc-laptop{width:48px; height:40px;}
-    .matloob-marketing-root .sc-car{width:52px; height:44px;}
-    .matloob-marketing-root .sc-dog{width:48px; height:44px;}
+    /* Both side image groups are hidden entirely on mobile — see the
+       shared .hero-side{display:none} rule above; hero-copy already
+       has the full-width wrap to itself here. */
 
     .matloob-marketing-root .cat-grid{grid-template-columns:repeat(3,1fr); gap:10px;}
     .matloob-marketing-root .cat-overlay span{font-size:11px;}
