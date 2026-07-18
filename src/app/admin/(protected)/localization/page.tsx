@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Globe2 } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Tabs } from "@/components/admin/Tabs";
@@ -117,6 +118,12 @@ function CitiesTab() {
 }
 
 export default function AdminLocalizationPage() {
+  // CMS nav's "Countries" / "Cities" items deep-link here as
+  // /admin/localization?tab=countries|cities instead of duplicating this
+  // page — see src/config/admin-nav.ts.
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") ?? undefined;
+
   return (
     <div>
       <PageHeader
@@ -129,6 +136,7 @@ export default function AdminLocalizationPage() {
         }
       />
       <Tabs
+        defaultKey={initialTab}
         items={[
           { key: "countries", label: "الدول", content: <CountriesTab /> },
           { key: "cities", label: "المدن", content: <CitiesTab /> },

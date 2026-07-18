@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { ImagePlus, Save } from "lucide-react";
 import { PageHeader } from "@/components/admin/PageHeader";
 import { Tabs } from "@/components/admin/Tabs";
@@ -153,6 +154,11 @@ function FooterSection({ footer, stats }: { footer: MockFooterContent; stats: Mo
 
 export default function AdminHomepagePage() {
   const [data, setData] = useState<Awaited<ReturnType<typeof getMockHomepageContent>> | null>(null);
+  // CMS nav's "Hero Section" item deep-links here as /admin/homepage?tab=hero
+  // instead of duplicating a second Hero management page — see
+  // src/config/admin-nav.ts.
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") ?? undefined;
 
   useEffect(() => {
     getMockHomepageContent().then(setData);
@@ -171,6 +177,7 @@ export default function AdminHomepagePage() {
         </Card>
       ) : (
         <Tabs
+          defaultKey={initialTab}
           items={[
             { key: "logo", label: "الشعار", content: <LogoSection /> },
             { key: "hero", label: "القسم الرئيسي", content: <HeroSection hero={data.hero} /> },
