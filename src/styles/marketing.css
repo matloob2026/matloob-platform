@@ -299,11 +299,12 @@
   .matloob-marketing-root .stat-label{font-size:12.5px; color:var(--text-500); font-weight:500;}
 
   /* ---------- static photo collage, flanking both sides of the hero text ----------
-     Matches the provided reference design: larger photos in a tilted,
-     overlapping composition. Rotation is a fixed, static CSS transform
-     only — no hover motion, no transitions, no animation. */
+     Matches the provided reference design exactly: larger photos in a
+     tilted, overlapping composition with per-card rotation angles.
+     Rotation is a fixed, static CSS transform only — no hover motion,
+     no transitions, no animation. */
   .matloob-marketing-root .hero-side{
-    position:absolute; top:0; width:300px; height:390px; z-index:2; pointer-events:none;
+    position:absolute; top:0; width:310px; height:460px; z-index:2; pointer-events:none;
   }
   .matloob-marketing-root .hero-side .float-card{pointer-events:auto;}
   .matloob-marketing-root .hero-side-left{left:-16px; transform-origin: top left;}
@@ -311,7 +312,7 @@
 
   .matloob-marketing-root .float-card{
     position:absolute;
-    border-radius:22px;
+    border-radius:23px;
     overflow:hidden;
     box-shadow:var(--shadow-card);
     border:5px solid rgba(255,255,255,.92);
@@ -320,21 +321,27 @@
   }
   .matloob-marketing-root .float-card img{width:100%; height:100%; object-fit:cover; display:block;}
 
-  /* left cluster: villa (outer) + phone (inner, overlapping), row 1;
-     laptop (outer) + interior (inner, overlapping), row 2; wide sofa
-     panorama, row 3 — tilt angles and overlap matched to the reference */
-  .matloob-marketing-root .sc-villa{    width:175px; height:150px; top:0;   left:0;   --rot:-4deg; z-index:2;}
-  .matloob-marketing-root .sc-phone{    width:110px; height:150px; top:6px; left:150px; --rot:6deg;  z-index:3;}
-  .matloob-marketing-root .sc-laptop{   width:150px; height:125px; top:158px; left:0;   --rot:-3deg; z-index:2;}
-  .matloob-marketing-root .sc-interior{ width:150px; height:125px; top:150px; left:140px; --rot:4deg;  z-index:3;}
-  .matloob-marketing-root .sc-sofa{     width:300px; height:100px; top:290px; left:0;   --rot:2deg;  z-index:1;}
+  /* Left group — exactly 5 cards:
+     1. top-left:    large landscape,  +6deg
+     2. top-right:   medium portrait,  -5deg, overlapping card 1
+     3. middle-left:  medium landscape, +7deg
+     4. middle-right: medium landscape, -6deg, partially overlaps card 3
+     5. bottom:      largest landscape, +5deg, sits slightly lower than the middle row */
+  .matloob-marketing-root .sc-villa{    width:195px; height:155px; top:0;    left:0;   --rot:6deg;  z-index:2;}
+  .matloob-marketing-root .sc-phone{    width:125px; height:165px; top:-8px; left:165px; --rot:-5deg; z-index:3;}
+  .matloob-marketing-root .sc-laptop{   width:180px; height:145px; top:172px; left:0;   --rot:7deg;  z-index:2;}
+  .matloob-marketing-root .sc-interior{ width:170px; height:140px; top:164px; left:155px; --rot:-6deg; z-index:3;}
+  .matloob-marketing-root .sc-sofa{     width:300px; height:115px; top:340px; left:0;   --rot:5deg;  z-index:1;}
 
-  /* right cluster: tech (outer) + car (inner, overlapping), row 1;
-     travel (outer) + dog (inner, overlapping), row 2 — mirrored */
-  .matloob-marketing-root .sc-tech{   width:110px; height:150px; top:6px;   right:0;    --rot:-6deg; z-index:3;}
-  .matloob-marketing-root .sc-car{    width:175px; height:150px; top:0;    right:95px; --rot:4deg;  z-index:2;}
-  .matloob-marketing-root .sc-travel{ width:150px; height:125px; top:158px; right:0;    --rot:5deg;  z-index:3;}
-  .matloob-marketing-root .sc-dog{    width:150px; height:125px; top:150px; right:140px; --rot:-3deg; z-index:2;}
+  /* Right group — exactly 4 cards:
+     1. top-left (inner):  large landscape, -6deg
+     2. top-right (outer): portrait,        +5deg
+     3. bottom-left (inner):  portrait,     +6deg
+     4. bottom-right (outer): portrait,     -5deg */
+  .matloob-marketing-root .sc-car{    width:195px; height:155px; top:0;    right:110px; --rot:-6deg; z-index:2;}
+  .matloob-marketing-root .sc-tech{   width:125px; height:165px; top:-8px; right:0;    --rot:5deg;  z-index:3;}
+  .matloob-marketing-root .sc-dog{    width:150px; height:175px; top:180px; right:135px; --rot:6deg;  z-index:2;}
+  .matloob-marketing-root .sc-travel{ width:150px; height:175px; top:172px; right:0;    --rot:-5deg; z-index:3;}
 
   /* ===================== SECTION HEADS ===================== */
   .matloob-marketing-root .section-head{display:flex; align-items:end; justify-content:space-between; margin-bottom:32px;}
