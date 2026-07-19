@@ -172,7 +172,21 @@ function toListItem(category: CategoryRecord): AdminCategoryListItem {
   };
 }
 
-function toAuditSnapshot(category: CategoryRecord): Record<string, unknown> {
+/** Exact JSON-safe shape audit snapshots use — narrower than
+ * `Record<string, unknown>` (which Prisma's Json input type rejects,
+ * since `unknown` isn't provably JSON-serializable) but still requires
+ * no import of the generated `Prisma` namespace: every value here is a
+ * plain string/boolean/number/null, each individually assignable to
+ * Prisma's `InputJsonValue`. */
+interface CategoryAuditSnapshot {
+  slug: string;
+  isActive: boolean;
+  sortOrder: number;
+  nameAr: string | null;
+  nameEn: string | null;
+}
+
+function toAuditSnapshot(category: CategoryRecord): CategoryAuditSnapshot {
   return {
     slug: category.slug,
     isActive: category.isActive,
