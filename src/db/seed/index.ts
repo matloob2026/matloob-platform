@@ -8,11 +8,14 @@
  * multiple times (e.g. on every deploy) never creates duplicates or
  * throws on a second run.
  *
- * Admin-user seeding, PageContent/HomepageStat/TrustBadge/SiteSetting
- * rows, and anything else from the original Phase 1 TODO list are
- * intentionally NOT included here — this pass only covers what's
- * needed to unblock request creation (categories/countries/cities/
- * currencies), per the current task's scope.
+ * CMS Checkpoint 02 adds: the homepage's hero `PageContent` row
+ * (headline/subtitle/CTA), `HomepageStat`, and `TrustBadge` — seeded
+ * with the platform's existing hardcoded values so the Admin CMS's
+ * "Homepage Content" screen starts out managing the SAME content
+ * already live on the homepage, rather than an empty list (see
+ * src/content/marketing/homepage-body.html for the values being
+ * mirrored here). Admin-user seeding and SiteSetting rows remain out
+ * of scope, unchanged from before.
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -206,6 +209,86 @@ async function seedCountriesAndCities(currencyIdByCode: Map<string, string>): Pr
   }
 }
 
+async function seedHomepageContent(): Promise<void> {
+  // Hero PageContent row — matches src/content/marketing/homepage-body.html's
+  // current hardcoded headline/subtitle/CTA exactly, so seeding this does
+  // NOT change what the public homepage renders (see
+  // getPublicHomepageMainContent's fallback in
+  // src/lib/homepage-public-content.ts either way).
+  for (const [locale, heading, body, ctaLabel] of [
+    [
+      "ar",
+      "قولنا إيه اللي محتاجه...وسيّب الباقي علينا.",
+      "بدل ما تدور... اطلبها وبكل سهولة تجيلك! سيارة، شقة، وظيفة، أو أي خدمة تحتاجها. حدد طلبك، ومطلوب هيوفرهولك مجاناً.",
+      "أضف طلبك الآن",
+    ],
+    [
+      "en",
+      "Tell us what you need... and leave the rest to us.",
+      "Instead of searching... request it and it comes to you easily! A car, an apartment, a job, or any service you need.",
+      "Add your request now",
+    ],
+  ] as const) {
+    await prisma.pageContent.upsert({
+      where: { page_section_locale: { page: "homepage", section: "hero", locale } },
+      create: { page: "homepage", section: "hero", locale, heading, body, ctaLabel, ctaUrl: "/create-request" },
+      update: { heading, body, ctaLabel, ctaUrl: "/create-request" },
+    });
+  }
+
+  const stats: { key: string; value: number; labelAr: string; labelEn: string; sortOrder: number }[] = [
+    { key: "requests_published", value: 25000, labelAr: "طلب منشور", labelEn: "Requests Published", sortOrder: 0 },
+    { key: "active_members", value: 15000, labelAr: "عضو نشط", labelEn: "Active Members", sortOrder: 1 },
+    { key: "requests_completed", value: 9000, labelAr: "طلب تم تنفيذه", labelEn: "Requests Completed", sortOrder: 2 },
+    { key: "requests_today", value: 1200, labelAr: "طلبات جديدة اليوم", labelEn: "New Requests Today", sortOrder: 3 },
+  ];
+  for (const stat of stats) {
+    const row = await prisma.homepageStat.upsert({
+      where: { key: stat.key },
+      create: { key: stat.key, value: stat.value, sortOrder: stat.sortOrder, isActive: true },
+      update: { value: stat.value, sortOrder: stat.sortOrder },
+    });
+    for (const [locale, label] of [
+      ["ar", stat.labelAr],
+      ["en", stat.labelEn],
+    ] as const) {
+      await prisma.homepageStatTranslation.upsert({
+        where: { statId_locale: { statId: row.id, locale } },
+        create: { statId: row.id, locale, label },
+        update: { label },
+      });
+    }
+  }
+
+  // TrustBadge has no natural unique key (no slug/code) — matched by its
+  // Arabic label instead, which is stable and unique for these two seed
+  // rows; new badges added later through the Admin CMS aren't affected.
+  const badges: { labelAr: string; labelEn: string; sortOrder: number }[] = [
+    { labelAr: "دفع وتواصل آمن", labelEn: "Secure payment & contact", sortOrder: 0 },
+    { labelAr: "دعم فني 24/7", labelEn: "24/7 support", sortOrder: 1 },
+  ];
+  for (const badge of badges) {
+    const existing = await prisma.trustBadgeTranslation.findFirst({
+      where: { locale: "ar", label: badge.labelAr },
+      select: { badgeId: true },
+    });
+    const row = existing
+      ? await prisma.trustBadge.update({ where: { id: existing.badgeId }, data: { sortOrder: badge.sortOrder } })
+      : await prisma.trustBadge.create({ data: { sortOrder: badge.sortOrder, isActive: true } });
+
+    for (const [locale, label] of [
+      ["ar", badge.labelAr],
+      ["en", badge.labelEn],
+    ] as const) {
+      await prisma.trustBadgeTranslation.upsert({
+        where: { badgeId_locale: { badgeId: row.id, locale } },
+        create: { badgeId: row.id, locale, label },
+        update: { label },
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   console.log("Seeding currencies...");
   const currencyIdByCode = await seedCurrencies();
@@ -215,6 +298,9 @@ async function main(): Promise<void> {
 
   console.log("Seeding countries, cities, and country-currency links...");
   await seedCountriesAndCities(currencyIdByCode);
+
+  console.log("Seeding homepage content (hero, stats, trust badges)...");
+  await seedHomepageContent();
 
   console.log("Seed complete.");
 }

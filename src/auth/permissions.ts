@@ -38,6 +38,16 @@ export const ADMIN_PERMISSIONS: Record<AdminRole, readonly string[]> = {
  */
 export const CATEGORY_MANAGE_PERMISSION = "categories:manage";
 
+/**
+ * CMS Checkpoint 02: Homepage Content management (main content,
+ * statistics, trust badges) requires `homepage:manage` for write
+ * actions — the same pattern as `categories:manage` above.
+ * `homepage:view` (already granted to ADMIN only) continues to gate
+ * the sidebar link; this is the separate permission the server actions
+ * check before touching the database.
+ */
+export const HOMEPAGE_MANAGE_PERMISSION = "homepage:manage";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);

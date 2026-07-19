@@ -4,6 +4,12 @@ import type { Metadata } from "next";
 import "@/styles/marketing.css";
 import { LegacyHomepageScripts } from "@/components/marketing/LegacyHomepageScripts";
 import { HomepageAuthNav } from "@/components/marketing/HomepageAuthNav";
+import {
+  getPublicHomepageMainContent,
+  getPublicHomepageStats,
+  getPublicHomepageTrustBadges,
+} from "@/lib/homepage-public-content";
+import { renderHomepageHtml } from "./homepage-render";
 
 export const metadata: Metadata = {
   title: "مطلوب | قولنا إيه اللي محتاجه",
@@ -27,16 +33,36 @@ export const metadata: Metadata = {
  * restored by <LegacyHomepageScripts />, which runs the same vanilla
  * JS the static file shipped with.
  *
+ * CMS Checkpoint 02: the hero headline/subtitle/CTA, the stats strip,
+ * and the trust badges are no longer purely hardcoded — see
+ * ./homepage-render.ts, which injects database-backed content (loaded
+ * via src/lib/homepage-public-content.ts) between marker comments in
+ * the static HTML. When nothing has been saved in the Admin CMS yet,
+ * every one of those reads returns null/[] and the original static
+ * content renders completely untouched — see homepage-render.ts's
+ * docstring for the exact guarantee. The Hero section's image collage
+ * and the rest of the page (categories grid, footer links, etc.)
+ * remain exactly as before; only these three CMS-managed pieces can
+ * change source.
+ *
  * When Phase 3+ rebuilds this as real React components (per the
  * src/components/hero, src/components/requests folders reserved in
  * Phase 1), this file is what gets replaced — nothing else in the app
  * depends on its internals.
  */
-export default function HomePage() {
-  const bodyHtml = fs.readFileSync(
+export default async function HomePage() {
+  const rawHtml = fs.readFileSync(
     path.join(process.cwd(), "src/content/marketing/homepage-body.html"),
     "utf-8"
   );
+
+  const [main, stats, trustBadges] = await Promise.all([
+    getPublicHomepageMainContent(),
+    getPublicHomepageStats(),
+    getPublicHomepageTrustBadges(),
+  ]);
+
+  const bodyHtml = renderHomepageHtml(rawHtml, { main, stats, trustBadges });
 
   return (
     <>
