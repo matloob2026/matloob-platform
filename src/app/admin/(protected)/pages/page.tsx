@@ -1,29 +1,27 @@
-import { FileText } from "lucide-react";
 import { requirePermission } from "@/auth/guards";
-import { CmsPlaceholder } from "@/components/admin/CmsPlaceholder";
+import { staticPageAdminService } from "@/services/admin/static-page.service";
+import { StaticPagesManager } from "./StaticPagesManager";
 
 /**
- * CMS foundation placeholder (Checkpoint 01) — Static Pages (e.g. "About",
- * "Terms", "Privacy Policy"). No dedicated model exists for these yet —
- * the closest existing table, `PageContent`, is shaped around named
- * homepage sections (page/section/locale), not arbitrary owner-authored
- * pages, so a real static-pages content model is a future checkpoint's
- * schema decision rather than something to bolt on here.
+ * Static Pages CMS management — Checkpoint 03's real, database-backed
+ * content-management screen, reusing the existing `PageContent` model
+ * (see src/services/admin/static-page.service.ts for how a static page
+ * maps onto it). Replaces the Checkpoint 01 placeholder that lived at
+ * this same route.
+ *
+ * `requirePermission` ensures only an authenticated ADMIN session
+ * reaches this page (the "pages:view" permission is not granted to
+ * MODERATOR — see src/auth/permissions.ts), on top of the session
+ * check every admin route already gets from the protected layout.
+ *
+ * Data is fetched once here (server component) and handed to the
+ * interactive client component below; mutations go through the server
+ * actions in ./actions.ts, which re-validate the "pages:manage"
+ * permission server-side before touching the database.
  */
 export default async function AdminStaticPagesPage() {
   await requirePermission("pages:view");
+  const pages = await staticPageAdminService.listPages();
 
-  return (
-    <CmsPlaceholder
-      title="الصفحات الثابتة"
-      description="إدارة صفحات مثل «من نحن»، «الشروط والأحكام»، و«سياسة الخصوصية»"
-      icon={FileText}
-      plannedControls={[
-        "إنشاء صفحة جديدة بعنوان ورابط ومحتوى قابل للتحرير",
-        "نشر/إخفاء كل صفحة بشكل مستقل",
-        "دعم اللغتين العربية والإنجليزية لكل صفحة",
-        "ربط كل صفحة بإعدادات SEO الخاصة بها (عبر جدول SeoSetting الموجود)",
-      ]}
-    />
-  );
+  return <StaticPagesManager initialPages={pages} />;
 }

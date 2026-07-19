@@ -48,6 +48,15 @@ export const CATEGORY_MANAGE_PERMISSION = "categories:manage";
  */
 export const HOMEPAGE_MANAGE_PERMISSION = "homepage:manage";
 
+/**
+ * CMS Checkpoint 03: Static Pages management requires `pages:manage`
+ * for write actions (create/update/toggle/delete) — same pattern as
+ * `categories:manage`/`homepage:manage` above. `pages:view` (already
+ * granted to ADMIN only since Checkpoint 01) continues to gate the
+ * sidebar link and read access.
+ */
+export const PAGE_MANAGE_PERMISSION = "pages:manage";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);
