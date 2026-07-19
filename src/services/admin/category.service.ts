@@ -17,9 +17,17 @@
  *     used solely to type the `$transaction` interactive-callback
  *     parameter correctly — `typeof prisma` is NOT the same type as the
  *     transaction client `$transaction` passes in (it omits methods like
- *     `$transaction` itself), which is what caused a real Prisma
+ *     `$transaction` itself), which caused a real Prisma
  *     overload-mismatch build error; `Prisma.TransactionClient` is
  *     Prisma's own official type for this exact parameter.
+ *   - nullable Json audit fields (`before`/`after`) that have no
+ *     snapshot to record use `undefined`, not `null` — the generated
+ *     Prisma input type for a nullable Json field is
+ *     `NullableJsonNullValueInput | InputJsonValue | undefined`, which
+ *     does not include plain `null`. `undefined` simply omits the key
+ *     (the column keeps its default/NULL), which is exactly the
+ *     intended "no snapshot" meaning here, without needing a runtime
+ *     import of `Prisma.DbNull`/`Prisma.JsonNull`.
  *
  * Additionally follows src/admin/README.md's "Architectural rule":
  * every mutation here writes an `AdminAuditLog` row in the same
@@ -259,7 +267,7 @@ export class CategoryAdminService {
             action: "CREATE_CATEGORY",
             entityType: "Category",
             entityId: category.id,
-            before: null,
+            before: undefined,
             after: { slug: category.slug, nameAr: input.nameAr, nameEn: input.nameEn, isActive: category.isActive },
           },
         });
@@ -436,7 +444,7 @@ export class CategoryAdminService {
               nameAr: category.translations.find((t: TranslationRow) => t.locale === "ar")?.name ?? null,
               nameEn: category.translations.find((t: TranslationRow) => t.locale === "en")?.name ?? null,
             },
-            after: null,
+            after: undefined,
           },
         });
       } else {
