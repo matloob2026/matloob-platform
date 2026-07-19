@@ -13,11 +13,13 @@
  *     string-matching thrown errors,
  *   - Prisma is the only data access (imported from src/lib/prisma),
  *   - callers (server actions / route handlers) stay thin,
- *   - no import of the generated `Prisma` namespace — every other
- *     service in this codebase avoids it too (relying on Prisma's
- *     inferred client types instead), which also keeps this file
- *     type-checkable without a completed `prisma generate` (see the
- *     verification note at the bottom of this docstring).
+ *   - only a type-only import of `Prisma` (`Prisma.TransactionClient`),
+ *     used solely to type the `$transaction` interactive-callback
+ *     parameter correctly — `typeof prisma` is NOT the same type as the
+ *     transaction client `$transaction` passes in (it omits methods like
+ *     `$transaction` itself), which is what caused a real Prisma
+ *     overload-mismatch build error; `Prisma.TransactionClient` is
+ *     Prisma's own official type for this exact parameter.
  *
  * Additionally follows src/admin/README.md's "Architectural rule":
  * every mutation here writes an `AdminAuditLog` row in the same
@@ -48,6 +50,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
@@ -233,7 +236,7 @@ export class CategoryAdminService {
 
     const hasRealActor = await actorExists(actorId);
 
-    const created = await prisma.$transaction(async (tx: typeof prisma) => {
+    const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const category = await tx.category.create({
         data: {
           slug: input.slug,
@@ -299,7 +302,7 @@ export class CategoryAdminService {
 
     const hasRealActor = await actorExists(actorId);
 
-    const updated = await prisma.$transaction(async (tx: typeof prisma) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const category = await tx.category.update({
         where: { id },
         data: {
@@ -355,7 +358,7 @@ export class CategoryAdminService {
 
     const hasRealActor = await actorExists(actorId);
 
-    const updated = await prisma.$transaction(async (tx: typeof prisma) => {
+    const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const category = await tx.category.update({
         where: { id },
         data: { isActive },
@@ -418,7 +421,7 @@ export class CategoryAdminService {
 
     const hasRealActor = await actorExists(actorId);
 
-    await prisma.$transaction(async (tx: typeof prisma) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.category.delete({ where: { id } });
 
       if (hasRealActor) {
