@@ -174,17 +174,16 @@ function toListItem(category: CategoryRecord): AdminCategoryListItem {
 
 /** Exact JSON-safe shape audit snapshots use — narrower than
  * `Record<string, unknown>` (which Prisma's Json input type rejects,
- * since `unknown` isn't provably JSON-serializable) but still requires
- * no import of the generated `Prisma` namespace: every value here is a
- * plain string/boolean/number/null, each individually assignable to
- * Prisma's `InputJsonValue`. */
-interface CategoryAuditSnapshot {
-  slug: string;
-  isActive: boolean;
-  sortOrder: number;
-  nameAr: string | null;
-  nameEn: string | null;
-}
+ * since `unknown` isn't provably JSON-serializable), but still a
+ * `Record<...>` rather than a plain named-property interface: Prisma's
+ * generated `InputJsonObject` is `{ [key: string]: InputJsonValue }`,
+ * an indexed type. A named-property-only interface has no string
+ * index signature and is therefore NOT structurally assignable to it,
+ * even when every individual property is itself JSON-safe. `Record`
+ * carries that index signature, so this type-checks against the real
+ * generated Prisma client. No import of the generated `Prisma`
+ * namespace is needed either way. */
+type CategoryAuditSnapshot = Record<string, string | number | boolean | null>;
 
 function toAuditSnapshot(category: CategoryRecord): CategoryAuditSnapshot {
   return {
