@@ -65,6 +65,23 @@ import type { Prisma } from "@prisma/client";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SECTION = "main";
+
+/**
+ * Normalizes a raw slug before validation: trims surrounding
+ * whitespace and lowercases it. This is a pure hardening step, not a
+ * relaxation of the rule — the accepted character set (English
+ * lowercase letters, digits, single hyphens between segments) is
+ * unchanged; this only means "About " and "ABOUT" are treated the same
+ * as "about" rather than being rejected for incidental
+ * casing/whitespace from typing or copy-paste. Applied before
+ * `validateInput` in every mutation below, so `about`,
+ * `privacy-policy`, `terms`, `contact`, and `my-new-page` are always
+ * accepted exactly as typed.
+ */
+function normalizeSlug(rawSlug: string): string {
+  return rawSlug.trim().toLowerCase();
+}
+
 /** Checkpoint 02 already owns `page = "homepage"` rows (section: hero |
  * how_it_works | cta | footer_statement) — reserved so a static page
  * can never alias over them, and so `/pages/homepage` can never be
@@ -239,6 +256,7 @@ export class StaticPageAdminService {
   }
 
   async createPage(input: StaticPageInput, actorId: string): Promise<StaticPageListItem> {
+    input = { ...input, slug: normalizeSlug(input.slug ?? "") };
     validateInput(input);
 
     const existing = await findPageRows(input.slug);
@@ -300,7 +318,7 @@ export class StaticPageAdminService {
     const beforeEn = before.find((r) => r.locale === "en");
 
     const merged: StaticPageInput = {
-      slug: input.slug ?? slug,
+      slug: normalizeSlug(input.slug ?? slug),
       titleAr: input.titleAr ?? beforeAr?.heading ?? "",
       titleEn: input.titleEn ?? beforeEn?.heading ?? "",
       contentAr: input.contentAr ?? beforeAr?.body ?? "",
