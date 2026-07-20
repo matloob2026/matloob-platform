@@ -38,13 +38,16 @@ function toActionState(err: unknown): StaticPageActionState {
   return { success: false, error: "حدث خطأ غير متوقع. حاول مرة أخرى." };
 }
 
-/** Revalidates the Admin list and the specific public route(s) affected
- * — both the old and new slug, in case this was a rename. */
+/** Revalidates the Admin list, the specific public route(s) affected
+ * (both the old and new slug, in case this was a rename), and the
+ * public homepage — whose footer "Legal" links now list published
+ * static pages (Checkpoint 04, see ../../../(marketing)/homepage-render.ts). */
 function revalidateStaticPages(...slugs: string[]): void {
   revalidatePath("/admin/pages");
   for (const slug of slugs) {
     revalidatePath(`/pages/${slug}`);
   }
+  revalidatePath("/");
 }
 
 export async function listStaticPagesAction() {

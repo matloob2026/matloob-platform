@@ -9,6 +9,7 @@ import {
   getPublicHomepageStats,
   getPublicHomepageTrustBadges,
 } from "@/lib/homepage-public-content";
+import { getPublicStaticPageNavLinks } from "@/lib/static-page-public-content";
 import { renderHomepageHtml } from "./homepage-render";
 
 export const metadata: Metadata = {
@@ -45,6 +46,13 @@ export const metadata: Metadata = {
  * remain exactly as before; only these three CMS-managed pieces can
  * change source.
  *
+ * CMS Checkpoint 04: the footer's "Legal" links column also lists any
+ * currently-published Static Page (see
+ * src/lib/static-page-public-content.ts /
+ * src/services/admin/static-page.service.ts) instead of its two
+ * hardcoded placeholder links — again with the same safe fallback: if
+ * no static page is published yet, the original placeholders remain.
+ *
  * When Phase 3+ rebuilds this as real React components (per the
  * src/components/hero, src/components/requests folders reserved in
  * Phase 1), this file is what gets replaced — nothing else in the app
@@ -56,13 +64,14 @@ export default async function HomePage() {
     "utf-8"
   );
 
-  const [main, stats, trustBadges] = await Promise.all([
+  const [main, stats, trustBadges, staticPageNavLinks] = await Promise.all([
     getPublicHomepageMainContent(),
     getPublicHomepageStats(),
     getPublicHomepageTrustBadges(),
+    getPublicStaticPageNavLinks(),
   ]);
 
-  const bodyHtml = renderHomepageHtml(rawHtml, { main, stats, trustBadges });
+  const bodyHtml = renderHomepageHtml(rawHtml, { main, stats, trustBadges, staticPageNavLinks });
 
   return (
     <>

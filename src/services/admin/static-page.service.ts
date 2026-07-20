@@ -197,17 +197,37 @@ function validateInput(input: StaticPageInput): void {
   if (RESERVED_SLUGS.has(input.slug)) {
     throw new StaticPageServiceError(`الرابط "${input.slug}" محجوز ولا يمكن استخدامه.`, "VALIDATION_ERROR");
   }
-  if (!input.titleAr?.trim()) {
-    throw new StaticPageServiceError("العنوان بالعربية مطلوب.", "VALIDATION_ERROR");
+
+  // CMS Checkpoint 04: the admin is no longer forced to fill in BOTH
+  // languages — they can pick a language (via the Admin form's
+  // العربية/English tabs) and save with just that one. A language row
+  // is only touched if the admin actually provided content for it (see
+  // createPage/updatePage below), so saving Arabic-only never deletes
+  // or overwrites any existing English content, and vice versa. What's
+  // still required: the slug, and at least one language fully
+  // filled in (title AND content together) — a half-filled language
+  // (title with no content, or content with no title) is rejected as
+  // a likely mistake rather than silently accepted.
+  const arProvided = Boolean(input.titleAr?.trim() || input.contentAr?.trim());
+  const enProvided = Boolean(input.titleEn?.trim() || input.contentEn?.trim());
+
+  if (arProvided && (!input.titleAr?.trim() || !input.contentAr?.trim())) {
+    throw new StaticPageServiceError(
+      "أدخل العنوان والمحتوى بالعربية معاً، أو اترك اللغة العربية فارغة بالكامل واكتفِ بالإنجليزية.",
+      "VALIDATION_ERROR"
+    );
   }
-  if (!input.titleEn?.trim()) {
-    throw new StaticPageServiceError("العنوان بالإنجليزية مطلوب.", "VALIDATION_ERROR");
+  if (enProvided && (!input.titleEn?.trim() || !input.contentEn?.trim())) {
+    throw new StaticPageServiceError(
+      "أدخل العنوان والمحتوى بالإنجليزية معاً، أو اترك اللغة الإنجليزية فارغة بالكامل واكتفِ بالعربية.",
+      "VALIDATION_ERROR"
+    );
   }
-  if (!input.contentAr?.trim()) {
-    throw new StaticPageServiceError("المحتوى بالعربية مطلوب.", "VALIDATION_ERROR");
-  }
-  if (!input.contentEn?.trim()) {
-    throw new StaticPageServiceError("المحتوى بالإنجليزية مطلوب.", "VALIDATION_ERROR");
+  if (!arProvided && !enProvided) {
+    throw new StaticPageServiceError(
+      "أدخل العنوان والمحتوى للغة واحدة على الأقل (عربي أو إنجليزي).",
+      "VALIDATION_ERROR"
+    );
   }
 }
 
@@ -265,28 +285,40 @@ export class StaticPageAdminService {
     }
 
     const hasRealActor = await actorExists(actorId);
+    const arProvided = Boolean(input.titleAr?.trim() && input.contentAr?.trim());
+    const enProvided = Boolean(input.titleEn?.trim() && input.contentEn?.trim());
 
     const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const ar = await tx.pageContent.create({
-        data: {
-          page: input.slug,
-          section: SECTION,
-          locale: "ar",
-          heading: input.titleAr,
-          body: input.contentAr,
-          isPublished: input.isActive ?? true,
-        },
-      });
-      const en = await tx.pageContent.create({
-        data: {
-          page: input.slug,
-          section: SECTION,
-          locale: "en",
-          heading: input.titleEn,
-          body: input.contentEn,
-          isPublished: input.isActive ?? true,
-        },
-      });
+      const rows: PageContentRow[] = [];
+
+      if (arProvided) {
+        rows.push(
+          await tx.pageContent.create({
+            data: {
+              page: input.slug,
+              section: SECTION,
+              locale: "ar",
+              heading: input.titleAr,
+              body: input.contentAr,
+              isPublished: input.isActive ?? true,
+            },
+          })
+        );
+      }
+      if (enProvided) {
+        rows.push(
+          await tx.pageContent.create({
+            data: {
+              page: input.slug,
+              section: SECTION,
+              locale: "en",
+              heading: input.titleEn,
+              body: input.contentEn,
+              isPublished: input.isActive ?? true,
+            },
+          })
+        );
+      }
 
       if (hasRealActor) {
         await tx.adminAuditLog.create({
@@ -296,14 +328,19 @@ export class StaticPageAdminService {
             entityType: "PageContent",
             entityId: input.slug,
             before: undefined,
-            after: { slug: input.slug, titleAr: input.titleAr, titleEn: input.titleEn, isActive: ar.isPublished },
+            after: {
+              slug: input.slug,
+              titleAr: input.titleAr,
+              titleEn: input.titleEn,
+              isActive: rows[0]?.isPublished ?? (input.isActive ?? true),
+            },
           },
         });
       } else {
         warnAuditSkipped("CREATE_STATIC_PAGE", input.slug, actorId);
       }
 
-      return [ar, en];
+      return rows;
     });
 
     return toListItem(created);
@@ -334,22 +371,74 @@ export class StaticPageAdminService {
       }
     }
 
+    // CMS Checkpoint 04: a language row is only written when that
+    // language is actually complete in the merged result. A language
+    // that already existed and wasn't touched round-trips unchanged
+    // (preserved, never overwritten by the other language's edit); a
+    // language that didn't exist yet gets CREATED here the first time
+    // the admin fills it in — so switching to the English tab later
+    // and saving adds English without disturbing the existing Arabic
+    // row, and vice versa.
+    const arProvided = Boolean(merged.titleAr.trim() && merged.contentAr.trim());
+    const enProvided = Boolean(merged.titleEn.trim() && merged.contentEn.trim());
+
     const hasRealActor = await actorExists(actorId);
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const rows: PageContentRow[] = [];
-      for (const row of before) {
-        const isAr = row.locale === "ar";
-        const updatedRow = await tx.pageContent.update({
-          where: { id: row.id },
-          data: {
-            page: merged.slug,
-            heading: isAr ? merged.titleAr : merged.titleEn,
-            body: isAr ? merged.contentAr : merged.contentEn,
-            isPublished: merged.isActive,
-          },
-        });
-        rows.push(updatedRow);
+
+      if (arProvided) {
+        const row = beforeAr
+          ? await tx.pageContent.update({
+              where: { id: beforeAr.id },
+              data: { page: merged.slug, heading: merged.titleAr, body: merged.contentAr, isPublished: merged.isActive },
+            })
+          : await tx.pageContent.create({
+              data: {
+                page: merged.slug,
+                section: SECTION,
+                locale: "ar",
+                heading: merged.titleAr,
+                body: merged.contentAr,
+                isPublished: merged.isActive,
+              },
+            });
+        rows.push(row);
+      } else if (beforeAr) {
+        // Slug/isActive still apply platform-wide even if this
+        // language wasn't (re)provided this time.
+        rows.push(
+          await tx.pageContent.update({
+            where: { id: beforeAr.id },
+            data: { page: merged.slug, isPublished: merged.isActive },
+          })
+        );
+      }
+
+      if (enProvided) {
+        const row = beforeEn
+          ? await tx.pageContent.update({
+              where: { id: beforeEn.id },
+              data: { page: merged.slug, heading: merged.titleEn, body: merged.contentEn, isPublished: merged.isActive },
+            })
+          : await tx.pageContent.create({
+              data: {
+                page: merged.slug,
+                section: SECTION,
+                locale: "en",
+                heading: merged.titleEn,
+                body: merged.contentEn,
+                isPublished: merged.isActive,
+              },
+            });
+        rows.push(row);
+      } else if (beforeEn) {
+        rows.push(
+          await tx.pageContent.update({
+            where: { id: beforeEn.id },
+            data: { page: merged.slug, isPublished: merged.isActive },
+          })
+        );
       }
 
       if (hasRealActor) {

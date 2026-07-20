@@ -270,6 +270,10 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
               )}
             </FormField>
 
+            <p className="mb-2 text-xs text-text-400">
+              اختر اللغة التي تريد تحريرها من التبويبين أدناه. يمكنك حفظ الصفحة بلغة واحدة فقط (عربي أو
+              إنجليزي) — تحرير لغة لا يحذف أو يستبدل محتوى اللغة الأخرى المحفوظ مسبقاً.
+            </p>
             <TranslationTabs
               render={(locale) => (
                 <div className="space-y-4">

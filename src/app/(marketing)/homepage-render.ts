@@ -1,7 +1,9 @@
 /**
  * Injects CMS-managed content into the locked homepage's static HTML
  * (src/content/marketing/homepage-body.html) between the invisible
- * `<!--CMS:...-->` marker comments added for Checkpoint 02.
+ * `<!--CMS:...-->` marker comments added for Checkpoint 02 (and
+ * Checkpoint 04's addition of `<!--CMS:STATIC_PAGES_NAV_...-->` for the
+ * footer's legal links).
  *
  * WHY marker comments instead of rewriting the page as JSX: the
  * homepage's design is deliberately preserved verbatim (see the
@@ -11,19 +13,22 @@
  * so they're a safe, minimal way to make specific fields dynamic
  * without touching markup, classes, or visual output.
  *
- * SAFE-FALLBACK GUARANTEE: every `replaceBetweenMarkers` call is a
- * no-op if its markers aren't found (e.g. a future edit removes them)
- * — the original hardcoded block simply stays. And every caller below
- * only replaces a section when real CMS content was actually loaded;
- * when `getPublicHomepageMainContent`/`getPublicHomepageStats`/
- * `getPublicHomepageTrustBadges` return null/[] (nothing saved yet),
- * this file does nothing at all, so the exact original static content
- * between the markers renders untouched — "must continue looking and
- * working exactly as it does now unless a dynamic content change is
- * made from the Admin CMS" holds by construction.
+ * SAFE-FALLBACK GUARANTEE: every `replaceBetweenMarkers` call (and
+ * every inline `.replace(...)` below) is a no-op if its markers aren't
+ * found (e.g. a future edit removes them) — the original hardcoded
+ * block simply stays. And every caller below only replaces a section
+ * when real CMS content was actually loaded; when
+ * `getPublicHomepageMainContent`/`getPublicHomepageStats`/
+ * `getPublicHomepageTrustBadges`/`getPublicStaticPageNavLinks` return
+ * null/[] (nothing saved / no active pages yet), this file does
+ * nothing for that section at all, so the exact original static
+ * content between its markers renders untouched — "must continue
+ * looking and working exactly as it does now unless a dynamic content
+ * change is made from the Admin CMS" holds by construction.
  */
 
 import type { PublicHomepageMainContent, PublicHomepageStat, PublicTrustBadge } from "@/lib/homepage-public-content";
+import type { PublicStaticPageNavLink } from "@/lib/static-page-public-content";
 
 function escapeHtml(value: string): string {
   return value
@@ -87,6 +92,7 @@ export function renderHomepageHtml(
     main: PublicHomepageMainContent | null;
     stats: PublicHomepageStat[];
     trustBadges: PublicTrustBadge[];
+    staticPageNavLinks: PublicStaticPageNavLink[];
   }
 ): string {
   let html = bodyHtml;
@@ -139,6 +145,16 @@ export function renderHomepageHtml(
     html = html.replace(
       /<!--CMS:TRUST_START-->[\s\S]*?<!--CMS:TRUST_END-->/,
       `<!--CMS:TRUST_START-->${trustHtml}<!--CMS:TRUST_END-->`
+    );
+  }
+
+  if (content.staticPageNavLinks.length > 0) {
+    const navHtml = content.staticPageNavLinks
+      .map((link) => `<li><a href="/pages/${escapeHtml(link.slug)}">${escapeHtml(link.title)}</a></li>`)
+      .join("");
+    html = html.replace(
+      /<!--CMS:STATIC_PAGES_NAV_START-->[\s\S]*?<!--CMS:STATIC_PAGES_NAV_END-->/,
+      `<!--CMS:STATIC_PAGES_NAV_START-->${navHtml}<!--CMS:STATIC_PAGES_NAV_END-->`
     );
   }
 
