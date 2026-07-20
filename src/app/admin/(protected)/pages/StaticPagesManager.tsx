@@ -21,6 +21,11 @@ import {
 
 const PAGE_SIZE = 20;
 
+/** Mirrors SLUG_PATTERN in src/services/admin/static-page.service.ts
+ * exactly — used here only for an instant, non-authoritative UI hint;
+ * the server always re-validates (and normalizes) independently. */
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 interface FormValues {
   slug: string;
   titleAr: string;
@@ -100,7 +105,7 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
     setFormError(undefined);
     startTransition(async () => {
       const input = {
-        slug: formValues.slug.trim(),
+        slug: formValues.slug.trim().toLowerCase(),
         titleAr: formValues.titleAr.trim(),
         titleEn: formValues.titleEn.trim(),
         contentAr: formValues.contentAr.trim(),
@@ -246,13 +251,23 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
           )}
 
           <div className="space-y-4">
-            <FormField label="الرابط (Slug)" hint="يُستخدم في /pages/الرابط — أحرف إنجليزية صغيرة وأرقام وشرطات فقط">
+            <FormField label="الرابط (Slug)" hint="يُستخدم في /pages/الرابط — أحرف إنجليزية صغيرة وأرقام وشرطات فقط، مثل about أو privacy-policy">
               <Input
                 placeholder="privacy-policy"
                 dir="ltr"
                 value={formValues.slug}
                 onChange={(e) => setFormValues((v) => ({ ...v, slug: e.target.value }))}
               />
+              {/* Only shown once the admin has typed something — never
+                  flags an untouched/empty field, and never flags a
+                  genuinely valid slug like "about" or "privacy-policy"
+                  (same SLUG_PATTERN the server normalizes and validates
+                  against — see static-page.service.ts). */}
+              {formValues.slug.trim().length > 0 && !SLUG_PATTERN.test(formValues.slug.trim().toLowerCase()) && (
+                <span className="mt-1 block text-xs font-semibold text-red-600">
+                  الرابط يجب أن يحتوي على أحرف إنجليزية صغيرة وأرقام وشرطات فقط، بدون مسافات أو أحرف عربية.
+                </span>
+              )}
             </FormField>
 
             <TranslationTabs
