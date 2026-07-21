@@ -19,7 +19,8 @@
  * block simply stays. And every caller below only replaces a section
  * when real CMS content was actually loaded; when
  * `getPublicHomepageMainContent`/`getPublicHomepageStats`/
- * `getPublicHomepageTrustBadges`/`getPublicStaticPageNavLinks` return
+ * `getPublicHomepageTrustBadges`/`getPublicStaticPageFooterNavLinks`/
+ * `getPublicStaticPageMainNavLinks` return
  * null/[] (nothing saved / no active pages yet), this file does
  * nothing for that section at all, so the exact original static
  * content between its markers renders untouched — "must continue
@@ -92,7 +93,8 @@ export function renderHomepageHtml(
     main: PublicHomepageMainContent | null;
     stats: PublicHomepageStat[];
     trustBadges: PublicTrustBadge[];
-    staticPageNavLinks: PublicStaticPageNavLink[];
+    footerStaticPageNavLinks: PublicStaticPageNavLink[];
+    mainNavStaticPageLinks: PublicStaticPageNavLink[];
   }
 ): string {
   let html = bodyHtml;
@@ -148,13 +150,28 @@ export function renderHomepageHtml(
     );
   }
 
-  if (content.staticPageNavLinks.length > 0) {
-    const navHtml = content.staticPageNavLinks
+  if (content.footerStaticPageNavLinks.length > 0) {
+    const navHtml = content.footerStaticPageNavLinks
       .map((link) => `<li><a href="/pages/${escapeHtml(link.slug)}">${escapeHtml(link.title)}</a></li>`)
       .join("");
     html = html.replace(
       /<!--CMS:STATIC_PAGES_NAV_START-->[\s\S]*?<!--CMS:STATIC_PAGES_NAV_END-->/,
       `<!--CMS:STATIC_PAGES_NAV_START-->${navHtml}<!--CMS:STATIC_PAGES_NAV_END-->`
+    );
+  }
+
+  if (content.mainNavStaticPageLinks.length > 0) {
+    // Appended AFTER the existing hardcoded nav links — never replaces
+    // or removes them, so nothing is duplicated or lost. Applied
+    // identically to both the desktop nav and the mobile nav so the
+    // two stay in sync (see the two CMS:MAIN_NAV_STATIC_PAGES marker
+    // pairs in homepage-body.html).
+    const linksHtml = content.mainNavStaticPageLinks
+      .map((link) => `<a href="/pages/${escapeHtml(link.slug)}">${escapeHtml(link.title)}</a>`)
+      .join("");
+    html = html.replace(
+      /<!--CMS:MAIN_NAV_STATIC_PAGES_START-->[\s\S]*?<!--CMS:MAIN_NAV_STATIC_PAGES_END-->/g,
+      `<!--CMS:MAIN_NAV_STATIC_PAGES_START-->${linksHtml}<!--CMS:MAIN_NAV_STATIC_PAGES_END-->`
     );
   }
 

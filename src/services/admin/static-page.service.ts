@@ -58,6 +58,10 @@
  * code is written directly against the real schema and is expected to
  * run as-is once `prisma generate` + `prisma migrate deploy` succeed
  * with real network access (e.g. on Vercel).
+ *
+ * CMS CHECKPOINT 04 ADDENDUM — Navigation placement/order: see the
+ * `NavPlacement` type and `parseNavMeta`/`buildNavMeta` helpers below.
+ * Reuses `PageContent.extra` (already in the schema); no schema change.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -87,6 +91,43 @@ function normalizeSlug(rawSlug: string): string {
  * can never alias over them, and so `/pages/homepage` can never be
  * confused with the real `/` homepage. */
 const RESERVED_SLUGS = new Set(["homepage"]);
+
+/**
+ * CMS Checkpoint 04 — Navigation placement.
+ *
+ * `PageContent.extra` (`Json?`, already in the schema as "free-form
+ * structured data") is reused to store `{ navPlacement, navOrder }` —
+ * no schema change was needed or made. This was checked first: the
+ * model already has exactly one field designed for exactly this kind
+ * of admin-configurable, non-relational metadata, so extending the
+ * schema would have duplicated capability that already exists.
+ *
+ * Both locale rows for a page carry the same `extra` value (written
+ * identically on every create/update below) so navigation placement
+ * is available regardless of which locale a reader queries.
+ */
+export type NavPlacement = "main" | "footer" | "both" | "none";
+const NAV_PLACEMENTS: readonly NavPlacement[] = ["main", "footer", "both", "none"];
+
+function parseNavMeta(extra: unknown): { navPlacement: NavPlacement; navOrder: number } {
+  if (extra && typeof extra === "object" && !Array.isArray(extra)) {
+    const obj = extra as Record<string, unknown>;
+    const placement = obj.navPlacement;
+    const order = obj.navOrder;
+    return {
+      navPlacement:
+        typeof placement === "string" && (NAV_PLACEMENTS as readonly string[]).includes(placement)
+          ? (placement as NavPlacement)
+          : "none",
+      navOrder: typeof order === "number" && Number.isFinite(order) ? order : 0,
+    };
+  }
+  return { navPlacement: "none", navOrder: 0 };
+}
+
+function buildNavMeta(navPlacement: NavPlacement, navOrder: number): Record<string, string | number> {
+  return { navPlacement, navOrder };
+}
 
 // ---------------------------------------------------------------------
 // Errors
@@ -127,6 +168,8 @@ export interface StaticPageListItem {
   contentAr: string;
   contentEn: string;
   isActive: boolean;
+  navPlacement: NavPlacement;
+  navOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -138,6 +181,8 @@ export interface StaticPageInput {
   contentAr: string;
   contentEn: string;
   isActive?: boolean;
+  navPlacement?: NavPlacement;
+  navOrder?: number;
 }
 
 export type UpdateStaticPageInput = Partial<StaticPageInput>;
@@ -153,6 +198,7 @@ interface PageContentRow {
   heading: string | null;
   body: string | null;
   isPublished: boolean;
+  extra: unknown;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -164,6 +210,7 @@ function toListItem(rows: PageContentRow[]): StaticPageListItem {
   const ar = rows.find((r) => r.locale === "ar");
   const en = rows.find((r) => r.locale === "en");
   const anyRow = ar ?? en ?? rows[0]!;
+  const { navPlacement, navOrder } = parseNavMeta(anyRow.extra);
   return {
     slug: anyRow.page,
     titleAr: ar?.heading ?? "",
@@ -171,6 +218,8 @@ function toListItem(rows: PageContentRow[]): StaticPageListItem {
     contentAr: ar?.body ?? "",
     contentEn: en?.body ?? "",
     isActive: anyRow.isPublished,
+    navPlacement,
+    navOrder,
     createdAt: rows.reduce((min, r) => (r.createdAt < min ? r.createdAt : min), anyRow.createdAt),
     updatedAt: rows.reduce((max, r) => (r.updatedAt > max ? r.updatedAt : max), anyRow.updatedAt),
   };
@@ -284,6 +333,10 @@ export class StaticPageAdminService {
       throw new StaticPageServiceError(`الرابط "${input.slug}" مستخدم بالفعل لصفحة أخرى.`, "DUPLICATE_SLUG");
     }
 
+    const navPlacement = input.navPlacement ?? "none";
+    const navOrder = input.navOrder ?? 0;
+    const navMeta = buildNavMeta(navPlacement, navOrder);
+
     const hasRealActor = await actorExists(actorId);
     const arProvided = Boolean(input.titleAr?.trim() && input.contentAr?.trim());
     const enProvided = Boolean(input.titleEn?.trim() && input.contentEn?.trim());
@@ -301,6 +354,7 @@ export class StaticPageAdminService {
               heading: input.titleAr,
               body: input.contentAr,
               isPublished: input.isActive ?? true,
+              extra: navMeta,
             },
           })
         );
@@ -315,6 +369,7 @@ export class StaticPageAdminService {
               heading: input.titleEn,
               body: input.contentEn,
               isPublished: input.isActive ?? true,
+              extra: navMeta,
             },
           })
         );
@@ -333,6 +388,8 @@ export class StaticPageAdminService {
               titleAr: input.titleAr,
               titleEn: input.titleEn,
               isActive: rows[0]?.isPublished ?? (input.isActive ?? true),
+              navPlacement,
+              navOrder,
             },
           },
         });
@@ -354,6 +411,7 @@ export class StaticPageAdminService {
     const beforeAr = before.find((r) => r.locale === "ar");
     const beforeEn = before.find((r) => r.locale === "en");
 
+    const beforeNavMeta = parseNavMeta((beforeAr ?? beforeEn)?.extra);
     const merged: StaticPageInput = {
       slug: normalizeSlug(input.slug ?? slug),
       titleAr: input.titleAr ?? beforeAr?.heading ?? "",
@@ -361,6 +419,8 @@ export class StaticPageAdminService {
       contentAr: input.contentAr ?? beforeAr?.body ?? "",
       contentEn: input.contentEn ?? beforeEn?.body ?? "",
       isActive: input.isActive ?? beforeAr?.isPublished ?? beforeEn?.isPublished ?? true,
+      navPlacement: input.navPlacement ?? beforeNavMeta.navPlacement,
+      navOrder: input.navOrder ?? beforeNavMeta.navOrder,
     };
     validateInput(merged);
 
@@ -370,6 +430,8 @@ export class StaticPageAdminService {
         throw new StaticPageServiceError(`الرابط "${merged.slug}" مستخدم بالفعل لصفحة أخرى.`, "DUPLICATE_SLUG");
       }
     }
+
+    const navMeta = buildNavMeta(merged.navPlacement ?? "none", merged.navOrder ?? 0);
 
     // CMS Checkpoint 04: a language row is only written when that
     // language is actually complete in the merged result. A language
@@ -391,7 +453,13 @@ export class StaticPageAdminService {
         const row = beforeAr
           ? await tx.pageContent.update({
               where: { id: beforeAr.id },
-              data: { page: merged.slug, heading: merged.titleAr, body: merged.contentAr, isPublished: merged.isActive },
+              data: {
+                page: merged.slug,
+                heading: merged.titleAr,
+                body: merged.contentAr,
+                isPublished: merged.isActive,
+                extra: navMeta,
+              },
             })
           : await tx.pageContent.create({
               data: {
@@ -401,16 +469,17 @@ export class StaticPageAdminService {
                 heading: merged.titleAr,
                 body: merged.contentAr,
                 isPublished: merged.isActive,
+                extra: navMeta,
               },
             });
         rows.push(row);
       } else if (beforeAr) {
-        // Slug/isActive still apply platform-wide even if this
-        // language wasn't (re)provided this time.
+        // Slug/isActive/nav metadata still apply platform-wide even if
+        // this language wasn't (re)provided this time.
         rows.push(
           await tx.pageContent.update({
             where: { id: beforeAr.id },
-            data: { page: merged.slug, isPublished: merged.isActive },
+            data: { page: merged.slug, isPublished: merged.isActive, extra: navMeta },
           })
         );
       }
@@ -419,7 +488,13 @@ export class StaticPageAdminService {
         const row = beforeEn
           ? await tx.pageContent.update({
               where: { id: beforeEn.id },
-              data: { page: merged.slug, heading: merged.titleEn, body: merged.contentEn, isPublished: merged.isActive },
+              data: {
+                page: merged.slug,
+                heading: merged.titleEn,
+                body: merged.contentEn,
+                isPublished: merged.isActive,
+                extra: navMeta,
+              },
             })
           : await tx.pageContent.create({
               data: {
@@ -429,6 +504,7 @@ export class StaticPageAdminService {
                 heading: merged.titleEn,
                 body: merged.contentEn,
                 isPublished: merged.isActive,
+                extra: navMeta,
               },
             });
         rows.push(row);
@@ -436,7 +512,7 @@ export class StaticPageAdminService {
         rows.push(
           await tx.pageContent.update({
             where: { id: beforeEn.id },
-            data: { page: merged.slug, isPublished: merged.isActive },
+            data: { page: merged.slug, isPublished: merged.isActive, extra: navMeta },
           })
         );
       }

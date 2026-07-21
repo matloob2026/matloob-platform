@@ -9,7 +9,10 @@ import {
   getPublicHomepageStats,
   getPublicHomepageTrustBadges,
 } from "@/lib/homepage-public-content";
-import { getPublicStaticPageNavLinks } from "@/lib/static-page-public-content";
+import {
+  getPublicStaticPageFooterNavLinks,
+  getPublicStaticPageMainNavLinks,
+} from "@/lib/static-page-public-content";
 import { renderHomepageHtml } from "./homepage-render";
 
 export const metadata: Metadata = {
@@ -53,6 +56,16 @@ export const metadata: Metadata = {
  * hardcoded placeholder links — again with the same safe fallback: if
  * no static page is published yet, the original placeholders remain.
  *
+ * CMS Checkpoint 05: each Static Page now also has an admin-controlled
+ * navigation placement — "main nav", "footer", "both", or "neither"
+ * (see `NavPlacement` in static-page.service.ts, stored in
+ * `PageContent.extra`, no schema change). Pages placed in "main nav"
+ * are appended after the header's existing hardcoded links (desktop
+ * and mobile) without replacing or duplicating them; pages placed in
+ * "footer" populate the footer list from Checkpoint 04. A page can
+ * appear in both, either, or neither location while still being
+ * reachable at its direct `/pages/[slug]` URL.
+ *
  * When Phase 3+ rebuilds this as real React components (per the
  * src/components/hero, src/components/requests folders reserved in
  * Phase 1), this file is what gets replaced — nothing else in the app
@@ -64,14 +77,21 @@ export default async function HomePage() {
     "utf-8"
   );
 
-  const [main, stats, trustBadges, staticPageNavLinks] = await Promise.all([
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks] = await Promise.all([
     getPublicHomepageMainContent(),
     getPublicHomepageStats(),
     getPublicHomepageTrustBadges(),
-    getPublicStaticPageNavLinks(),
+    getPublicStaticPageFooterNavLinks(),
+    getPublicStaticPageMainNavLinks(),
   ]);
 
-  const bodyHtml = renderHomepageHtml(rawHtml, { main, stats, trustBadges, staticPageNavLinks });
+  const bodyHtml = renderHomepageHtml(rawHtml, {
+    main,
+    stats,
+    trustBadges,
+    footerStaticPageNavLinks,
+    mainNavStaticPageLinks,
+  });
 
   return (
     <>

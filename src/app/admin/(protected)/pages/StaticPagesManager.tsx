@@ -7,11 +7,11 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Input, Textarea, FormField, Toggle } from "@/components/ui/Field";
+import { Input, Textarea, Select, FormField, Toggle } from "@/components/ui/Field";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
-import type { StaticPageListItem } from "@/services/admin/static-page.service";
+import type { StaticPageListItem, NavPlacement } from "@/services/admin/static-page.service";
 import {
   createStaticPageAction,
   updateStaticPageAction,
@@ -33,6 +33,8 @@ interface FormValues {
   contentAr: string;
   contentEn: string;
   isActive: boolean;
+  navPlacement: NavPlacement;
+  navOrder: string;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -42,6 +44,15 @@ const EMPTY_FORM: FormValues = {
   contentAr: "",
   contentEn: "",
   isActive: true,
+  navPlacement: "none",
+  navOrder: "0",
+};
+
+const NAV_PLACEMENT_LABELS: Record<NavPlacement, string> = {
+  main: "القائمة الرئيسية",
+  footer: "التذييل (Footer)",
+  both: "كلاهما",
+  none: "لا شيء (رابط مباشر فقط)",
 };
 
 function toFormValues(page: StaticPageListItem): FormValues {
@@ -52,10 +63,16 @@ function toFormValues(page: StaticPageListItem): FormValues {
     contentAr: page.contentAr,
     contentEn: page.contentEn,
     isActive: page.isActive,
+    navPlacement: page.navPlacement,
+    navOrder: String(page.navOrder),
   };
 }
 
 /** Real, database-backed Static Pages management — Checkpoint 03.
+ * Checkpoint 05 adds admin control over navigation placement (main
+ * nav / footer / both / neither) and display order per page, stored
+ * in PageContent.extra (see static-page.service.ts) — no schema
+ * change, no duplicate system.
  * Reuses the existing PageContent model and the same DataTable/
  * TranslationTabs pattern Categories/Homepage used in Checkpoints
  * 01/02. */
@@ -111,6 +128,8 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
         contentAr: formValues.contentAr.trim(),
         contentEn: formValues.contentEn.trim(),
         isActive: formValues.isActive,
+        navPlacement: formValues.navPlacement,
+        navOrder: Number(formValues.navOrder) || 0,
       };
 
       const result = editingSlug
@@ -193,6 +212,16 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
         <button onClick={() => handleToggleActive(p)} disabled={isPending} className="disabled:opacity-50">
           <Badge tone={p.isActive ? "success" : "neutral"}>{p.isActive ? "منشورة" : "غير منشورة"}</Badge>
         </button>
+      ),
+    },
+    {
+      key: "navigation",
+      header: "الظهور في التنقل",
+      render: (p) => (
+        <div className="text-xs">
+          <Badge tone={p.navPlacement === "none" ? "neutral" : "info"}>{NAV_PLACEMENT_LABELS[p.navPlacement]}</Badge>
+          {p.navPlacement !== "none" && <p className="mt-1 text-text-400">الترتيب: {p.navOrder}</p>}
+        </div>
       ),
     },
     {
@@ -308,6 +337,33 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
               onChange={(value) => setFormValues((v) => ({ ...v, isActive: value }))}
               label="منشورة (تظهر للزوار على الرابط العام)"
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                label="الظهور في التنقل"
+                hint="أين يظهر رابط هذه الصفحة على الموقع العام — تبقى الصفحة متاحة عبر رابطها المباشر دائماً بغض النظر عن هذا الخيار"
+              >
+                <Select
+                  value={formValues.navPlacement}
+                  onChange={(e) =>
+                    setFormValues((v) => ({ ...v, navPlacement: e.target.value as typeof v.navPlacement }))
+                  }
+                >
+                  <option value="none">{NAV_PLACEMENT_LABELS.none}</option>
+                  <option value="main">{NAV_PLACEMENT_LABELS.main}</option>
+                  <option value="footer">{NAV_PLACEMENT_LABELS.footer}</option>
+                  <option value="both">{NAV_PLACEMENT_LABELS.both}</option>
+                </Select>
+              </FormField>
+              <FormField label="ترتيب الظهور" hint="الأصغر يظهر أولاً">
+                <Input
+                  type="number"
+                  dir="ltr"
+                  value={formValues.navOrder}
+                  onChange={(e) => setFormValues((v) => ({ ...v, navOrder: e.target.value }))}
+                />
+              </FormField>
+            </div>
           </div>
 
           <div className="mt-5 flex justify-end gap-2">
