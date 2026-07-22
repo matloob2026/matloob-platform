@@ -317,7 +317,14 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
                       }
                     />
                   </FormField>
-                  <FormField label={locale === "ar" ? "المحتوى (عربي)" : "Content (English)"}>
+                  <FormField
+                    label={locale === "ar" ? "المحتوى (عربي)" : "Content (English)"}
+                    hint={
+                      locale === "ar"
+                        ? "تُنسَّق الفقرات تلقائياً — اترك سطراً فارغاً بين الفقرات، ابدأ سطراً بـ '- ' لعمل نقاط، وبـ '# ' أو '## ' لعنوان فرعي. لا حاجة لكتابة HTML."
+                        : "Formatting is automatic — leave a blank line between paragraphs, start a line with '- ' for a bullet list, and '# ' or '## ' for a subheading. No HTML needed."
+                    }
+                  >
                     <Textarea
                       rows={10}
                       value={locale === "ar" ? formValues.contentAr : formValues.contentEn}

@@ -77,7 +77,52 @@ function readNavMeta(extra: unknown): { navPlacement: string; navOrder: number }
   return { navPlacement: "none", navOrder: 0 };
 }
 
-async function getPublicStaticPageNavLinksFor(placements: string[]): Promise<PublicStaticPageNavLink[]> {
+/**
+ * CMS Checkpoint 06 (final Static Pages / Public Pages CMS task) —
+ * "fixed-slot" pages. These 7 slugs correspond to the site's existing
+ * hardcoded placeholder links (Contact, How It Works, About, Terms,
+ * Privacy, FAQ, Help Center — see the "الشركة"/"الدعم"/"قانوني" footer
+ * columns and the main nav in homepage-body.html). Their EXISTING
+ * hardcoded link's `href` is fixed in place to point at the real page
+ * once it's published (see homepage-render.ts) — the label text and
+ * position designed into the homepage stay untouched; nothing new is
+ * appended for them.
+ *
+ * Only "contact" and "how-it-works" also need excluding from
+ * `getPublicStaticPageMainNavLinks` below (see its own docstring) —
+ * those two are the only ones that ALSO live inside the same main nav
+ * whose "appended" list that function drives. "terms"/"privacy" are
+ * excluded from nothing: they're exactly the pages
+ * `getPublicStaticPageFooterNavLinks`'s dynamic "قانوني" list is
+ * designed to carry. "about"/"faq"/"help-center" don't appear in
+ * either dynamic list's own column, so no exclusion applies to them.
+ */
+export const KNOWN_FIXED_SLOT_SLUGS = [
+  "contact",
+  "how-it-works",
+  "about",
+  "terms",
+  "privacy",
+  "faq",
+  "help-center",
+] as const;
+
+/** Which of the fixed-slot slugs above currently resolve to a real,
+ * active page — used by homepage-render.ts to decide which hardcoded
+ * `href="#"` placeholders can be safely pointed at `/pages/{slug}`.
+ * A slug not yet created/published is simply omitted, so its
+ * placeholder link is left exactly as-is (safe fallback). */
+export async function getActiveKnownPageSlugs(): Promise<Set<string>> {
+  const results = await Promise.all(
+    KNOWN_FIXED_SLOT_SLUGS.map(async (slug) => ({ slug, page: await getPublicStaticPage(slug) }))
+  );
+  return new Set(results.filter((r) => r.page !== null).map((r) => r.slug));
+}
+
+async function getPublicStaticPageNavLinksFor(
+  placements: string[],
+  excludeSlugs: readonly string[] = []
+): Promise<PublicStaticPageNavLink[]> {
   const rows = await prisma.pageContent.findMany({
     where: { section: SECTION, locale: "ar", isPublished: true },
   });
@@ -88,7 +133,8 @@ async function getPublicStaticPageNavLinksFor(placements: string[]): Promise<Pub
       ...readNavMeta(r.extra),
     }))
     .filter(
-      (r: { title: string | null; navPlacement: string }) => Boolean(r.title) && placements.includes(r.navPlacement)
+      (r: { title: string | null; navPlacement: string; slug: string }) =>
+        Boolean(r.title) && placements.includes(r.navPlacement) && !excludeSlugs.includes(r.slug)
     )
     .sort((a: { navOrder: number }, b: { navOrder: number }) => a.navOrder - b.navOrder)
     .map((r: { slug: string; title: string | null }) => ({ slug: r.slug, title: r.title as string }));
@@ -99,7 +145,9 @@ async function getPublicStaticPageNavLinksFor(placements: string[]): Promise<Pub
  * src/app/(marketing)/homepage-render.ts. Returns [] when none are
  * configured yet — the caller then leaves the original hardcoded
  * placeholder links untouched (see CMS:STATIC_PAGES_NAV markers in
- * src/content/marketing/homepage-body.html). */
+ * src/content/marketing/homepage-body.html). No fixed-slot exclusions
+ * are needed here — "terms"/"privacy" are exactly the pages this list
+ * is meant to carry once published. */
 export async function getPublicStaticPageFooterNavLinks(): Promise<PublicStaticPageNavLink[]> {
   return getPublicStaticPageNavLinksFor(["footer", "both"]);
 }
@@ -108,7 +156,10 @@ export async function getPublicStaticPageFooterNavLinks(): Promise<PublicStaticP
  * navigation bar (navPlacement "main" or "both") — appended after the
  * existing hardcoded nav links (see CMS:MAIN_NAV_STATIC_PAGES markers
  * in src/content/marketing/homepage-body.html); never replaces or
- * duplicates them. Returns [] when none are configured. */
+ * duplicates them. Excludes "contact"/"how-it-works" specifically:
+ * those two already have their OWN fixed link inside this same main
+ * nav (see getActiveKnownPageSlugs/homepage-render.ts), so appending
+ * them again here would show the same page twice in one menu. */
 export async function getPublicStaticPageMainNavLinks(): Promise<PublicStaticPageNavLink[]> {
-  return getPublicStaticPageNavLinksFor(["main", "both"]);
+  return getPublicStaticPageNavLinksFor(["main", "both"], ["contact", "how-it-works"]);
 }

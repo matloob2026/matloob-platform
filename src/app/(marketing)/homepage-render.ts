@@ -20,12 +20,14 @@
  * when real CMS content was actually loaded; when
  * `getPublicHomepageMainContent`/`getPublicHomepageStats`/
  * `getPublicHomepageTrustBadges`/`getPublicStaticPageFooterNavLinks`/
- * `getPublicStaticPageMainNavLinks` return
- * null/[] (nothing saved / no active pages yet), this file does
- * nothing for that section at all, so the exact original static
- * content between its markers renders untouched — "must continue
- * looking and working exactly as it does now unless a dynamic content
- * change is made from the Admin CMS" holds by construction.
+ * `getPublicStaticPageMainNavLinks`/`getActiveKnownPageSlugs` return
+ * null/[]/an empty set (nothing saved / no active pages yet), this
+ * file does nothing for that section at all, so the exact original
+ * static content between its markers (or, for the known-placeholder
+ * links, the exact original `href="#"`) renders untouched — "must
+ * continue looking and working exactly as it does now unless a
+ * dynamic content change is made from the Admin CMS" holds by
+ * construction.
  */
 
 import type { PublicHomepageMainContent, PublicHomepageStat, PublicTrustBadge } from "@/lib/homepage-public-content";
@@ -87,6 +89,49 @@ const TRUST_BADGE_ICONS: Record<string, string> = {
 const TRUST_BADGE_ICON_FALLBACK =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
 
+/**
+ * CMS Checkpoint 06 (final task) — the site's existing hardcoded
+ * placeholder links (main nav, mobile nav, and the footer's
+ * "الشركة"/"الدعم" columns — "قانوني" is handled separately by the
+ * dynamic footerStaticPageNavLinks mechanism above). Every one of
+ * these labels already exists verbatim in homepage-body.html with
+ * `href="#"`. Once the corresponding Static Page is created AND
+ * published (see getActiveKnownPageSlugs in
+ * src/lib/static-page-public-content.ts), that placeholder's `href` —
+ * and ONLY the href, never the label text or the surrounding markup —
+ * is pointed at the real `/pages/{slug}`. A label with no matching
+ * published page is left exactly as `href="#"` (safe fallback — "Do
+ * not leave placeholder links" is satisfied progressively, as each
+ * page gets created, without ever breaking the page in the meantime).
+ *
+ * "المدونة" (Blog) is deliberately NOT in this map — it stays a
+ * separate, not-yet-built system and must not be converted into a
+ * Static Page.
+ */
+const KNOWN_LINK_LABEL_TO_SLUG: Record<string, string> = {
+  "تواصل معنا": "contact",
+  "كيف يعمل مطلوب": "how-it-works",
+  "من نحن": "about",
+  "الشروط والأحكام": "terms",
+  "سياسة الخصوصية": "privacy",
+  "الأسئلة الشائعة": "faq",
+  "مركز المساعدة": "help-center",
+};
+
+function fixKnownPlaceholderLinks(html: string, activeKnownPageSlugs: ReadonlySet<string>): string {
+  let result = html;
+  for (const [label, slug] of Object.entries(KNOWN_LINK_LABEL_TO_SLUG)) {
+    if (!activeKnownPageSlugs.has(slug)) continue;
+    // Matches this exact label wherever it appears as a placeholder
+    // link (main nav, mobile nav, footer columns) — every occurrence
+    // of the same label is the same destination, so replacing all of
+    // them is correct here, not a duplication risk.
+    const pattern = new RegExp(`href="#">${label}<`, "g");
+    result = result.replace(pattern, `href="/pages/${slug}">${label}<`);
+  }
+  return result;
+}
+
 export function renderHomepageHtml(
   bodyHtml: string,
   content: {
@@ -95,6 +140,7 @@ export function renderHomepageHtml(
     trustBadges: PublicTrustBadge[];
     footerStaticPageNavLinks: PublicStaticPageNavLink[];
     mainNavStaticPageLinks: PublicStaticPageNavLink[];
+    activeKnownPageSlugs: ReadonlySet<string>;
   }
 ): string {
   let html = bodyHtml;
@@ -173,6 +219,10 @@ export function renderHomepageHtml(
       /<!--CMS:MAIN_NAV_STATIC_PAGES_START-->[\s\S]*?<!--CMS:MAIN_NAV_STATIC_PAGES_END-->/g,
       `<!--CMS:MAIN_NAV_STATIC_PAGES_START-->${linksHtml}<!--CMS:MAIN_NAV_STATIC_PAGES_END-->`
     );
+  }
+
+  if (content.activeKnownPageSlugs.size > 0) {
+    html = fixKnownPlaceholderLinks(html, content.activeKnownPageSlugs);
   }
 
   return html;

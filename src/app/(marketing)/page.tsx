@@ -12,6 +12,7 @@ import {
 import {
   getPublicStaticPageFooterNavLinks,
   getPublicStaticPageMainNavLinks,
+  getActiveKnownPageSlugs,
 } from "@/lib/static-page-public-content";
 import { renderHomepageHtml } from "./homepage-render";
 
@@ -66,6 +67,16 @@ export const metadata: Metadata = {
  * appear in both, either, or neither location while still being
  * reachable at its direct `/pages/[slug]` URL.
  *
+ * CMS Checkpoint 06 (final task): every remaining hardcoded
+ * placeholder link on the homepage that corresponds to a real
+ * page-like destination (تواصل معنا / كيف يعمل مطلوب / من نحن /
+ * الشروط والأحكام / سياسة الخصوصية / الأسئلة الشائعة / مركز المساعدة)
+ * gets its `href` pointed at the real Static Page once it's created
+ * and published (see `getActiveKnownPageSlugs` and
+ * `fixKnownPlaceholderLinks` in ./homepage-render.ts) — label text and
+ * position stay exactly as designed. "المدونة" (Blog) is deliberately
+ * left as a placeholder — it's a separate, not-yet-built system.
+ *
  * When Phase 3+ rebuilds this as real React components (per the
  * src/components/hero, src/components/requests folders reserved in
  * Phase 1), this file is what gets replaced — nothing else in the app
@@ -77,13 +88,15 @@ export default async function HomePage() {
     "utf-8"
   );
 
-  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks] = await Promise.all([
-    getPublicHomepageMainContent(),
-    getPublicHomepageStats(),
-    getPublicHomepageTrustBadges(),
-    getPublicStaticPageFooterNavLinks(),
-    getPublicStaticPageMainNavLinks(),
-  ]);
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs] =
+    await Promise.all([
+      getPublicHomepageMainContent(),
+      getPublicHomepageStats(),
+      getPublicHomepageTrustBadges(),
+      getPublicStaticPageFooterNavLinks(),
+      getPublicStaticPageMainNavLinks(),
+      getActiveKnownPageSlugs(),
+    ]);
 
   const bodyHtml = renderHomepageHtml(rawHtml, {
     main,
@@ -91,6 +104,7 @@ export default async function HomePage() {
     trustBadges,
     footerStaticPageNavLinks,
     mainNavStaticPageLinks,
+    activeKnownPageSlugs,
   });
 
   return (

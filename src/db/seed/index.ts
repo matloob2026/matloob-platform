@@ -16,6 +16,13 @@
  * src/content/marketing/homepage-body.html for the values being
  * mirrored here). Admin-user seeding and SiteSetting rows remain out
  * of scope, unchanged from before.
+ *
+ * CMS Checkpoint 06 (final Static Pages / Public Pages CMS task) adds:
+ * the 7 "fixed-slot" Static Pages (about/contact/how-it-works/terms/
+ * privacy/faq/help-center) that back the site's previously-hardcoded
+ * placeholder links — see seedStaticPages() below. Re-running the
+ * seed never overwrites title/content an admin has since edited
+ * through the CMS (only isPublished/extra are kept in sync).
  */
 
 import { PrismaClient } from "@prisma/client";
@@ -289,6 +296,163 @@ async function seedHomepageContent(): Promise<void> {
   }
 }
 
+/**
+ * CMS Checkpoint 06 (final Static Pages / Public Pages CMS task) —
+ * the 7 "fixed-slot" static pages matching the site's existing
+ * hardcoded placeholder links (see KNOWN_FIXED_SLOT_SLUGS /
+ * KNOWN_LINK_LABEL_TO_SLUG in src/lib/static-page-public-content.ts
+ * and src/app/(marketing)/homepage-render.ts). Seeding these with
+ * real starter content is what turns those "href=#" placeholders into
+ * real working links — see fixKnownPlaceholderLinks. "terms" and
+ * "privacy" get navPlacement "footer" (they drive the footer's
+ * existing "قانوني" list — see getPublicStaticPageFooterNavLinks);
+ * the other five get "none" since they already have a fixed link
+ * elsewhere on the page and don't need a second, CMS-driven entry.
+ * "المدونة" (Blog) is intentionally NOT included — it stays a
+ * separate, not-yet-built system.
+ */
+async function seedStaticPages(): Promise<void> {
+  const pages: {
+    slug: string;
+    navPlacement: "none" | "footer";
+    navOrder: number;
+    ar: { title: string; content: string };
+    en: { title: string; content: string };
+  }[] = [
+    {
+      slug: "about",
+      navPlacement: "none",
+      navOrder: 0,
+      ar: {
+        title: "من نحن",
+        content:
+          "مطلوب هي أول منصة طلبات في المملكة تقلب الفكرة رأساً على عقب: بدل ما تدور على اللي تحتاجه، انت بس تكتب طلبك وتسيب الباقي علينا.\n\nمن سيارة، لشقة، لوظيفة، لأي خدمة تقدر تتخيلها — مطلوب يوصل طلبك لأفضل الموردين اللي يقدروا يلبوه، وانت تختار العرض المناسب لك.\n\nهدفنا نخلي تجربة الحصول على أي شيء أسهل، أسرع، وأكثر أماناً.",
+      },
+      en: {
+        title: "About Us",
+        content:
+          "Matloob is the first request-first marketplace in the Kingdom: instead of searching for what you need, you simply post your request and let the right suppliers come to you.\n\nFrom a car to an apartment to a job to any service you can imagine — Matloob connects your request to the suppliers best able to fulfill it, and you choose the offer that suits you.\n\nOur goal is to make finding anything easier, faster, and safer.",
+      },
+    },
+    {
+      slug: "contact",
+      navPlacement: "none",
+      navOrder: 0,
+      ar: {
+        title: "تواصل معنا",
+        content:
+          "يسعدنا تواصلك معنا في أي وقت.\n\nللاستفسارات العامة أو الدعم الفني، يمكنك التواصل معنا عبر البريد الإلكتروني وسنقوم بالرد عليك في أقرب وقت ممكن.\n\nنسعى دائماً لتقديم أفضل تجربة ممكنة، ورأيك يهمنا.",
+      },
+      en: {
+        title: "Contact Us",
+        content:
+          "We'd love to hear from you at any time.\n\nFor general inquiries or technical support, please reach out to us by email and we'll get back to you as soon as possible.\n\nWe're always working to provide the best possible experience, and your feedback matters to us.",
+      },
+    },
+    {
+      slug: "how-it-works",
+      navPlacement: "none",
+      navOrder: 0,
+      ar: {
+        title: "كيف يعمل مطلوب",
+        content:
+          "استخدام مطلوب بسيط وسريع، على ثلاث خطوات فقط:\n\n- اكتب طلبك: حدد بالضبط اللي محتاجه، من سيارة لخدمة لوظيفة.\n- استقبل العروض: الموردون المهتمون يرسلولك عروضهم مباشرة.\n- اختر الأنسب: قارن العروض واختر اللي يناسبك من حيث السعر والجودة.\n\nكل ده مجاناً وبدون أي التزام.",
+      },
+      en: {
+        title: "How Matloob Works",
+        content:
+          "Using Matloob is simple and fast, in just three steps:\n\n- Post your request: describe exactly what you need, from a car to a service to a job.\n- Receive offers: interested suppliers send you their offers directly.\n- Choose the best fit: compare offers and pick the one that suits you best.\n\nAll of this is free, with no obligation.",
+      },
+    },
+    {
+      slug: "terms",
+      navPlacement: "footer",
+      navOrder: 0,
+      ar: {
+        title: "الشروط والأحكام",
+        content:
+          "باستخدامك منصة مطلوب فإنك توافق على الشروط والأحكام التالية.\n\nتلتزم بتقديم معلومات صحيحة عند نشر أي طلب، وتتحمل مسؤولية التواصل والاتفاق مع الموردين وفق ما يناسبك.\n\nتحتفظ مطلوب بحق تعديل هذه الشروط في أي وقت، وسيتم إعلامك بأي تحديثات جوهرية.",
+      },
+      en: {
+        title: "Terms & Conditions",
+        content:
+          "By using the Matloob platform, you agree to the following terms and conditions.\n\nYou agree to provide accurate information when posting any request, and you are responsible for communicating and agreeing with suppliers as suits you.\n\nMatloob reserves the right to modify these terms at any time, and you will be notified of any material updates.",
+      },
+    },
+    {
+      slug: "privacy",
+      navPlacement: "footer",
+      navOrder: 1,
+      ar: {
+        title: "سياسة الخصوصية",
+        content:
+          "نحن في مطلوب نأخذ خصوصيتك على محمل الجد.\n\nنجمع فقط المعلومات اللازمة لتقديم الخدمة، ولا نشارك بياناتك مع أي طرف ثالث إلا بموافقتك أو حسب ما يقتضيه القانون.\n\nيمكنك في أي وقت التواصل معنا لطلب تعديل أو حذف بياناتك الشخصية.",
+      },
+      en: {
+        title: "Privacy Policy",
+        content:
+          "At Matloob, we take your privacy seriously.\n\nWe only collect the information necessary to provide our service, and we do not share your data with any third party except with your consent or as required by law.\n\nYou may contact us at any time to request that your personal data be updated or deleted.",
+      },
+    },
+    {
+      slug: "faq",
+      navPlacement: "none",
+      navOrder: 0,
+      ar: {
+        title: "الأسئلة الشائعة",
+        content:
+          "أسئلة شائعة عن مطلوب:\n\n- هل استخدام مطلوب مجاني؟ نعم، نشر الطلبات مجاني بالكامل.\n- كيف أستقبل العروض؟ ستصلك العروض من الموردين المهتمين مباشرة بعد نشر طلبك.\n- هل يمكنني إلغاء طلبي؟ نعم، يمكنك إغلاق أو حذف طلبك في أي وقت من صفحة طلباتي.",
+      },
+      en: {
+        title: "Frequently Asked Questions",
+        content:
+          "Frequently asked questions about Matloob:\n\n- Is Matloob free to use? Yes, posting requests is completely free.\n- How do I receive offers? Interested suppliers will send offers directly after you post your request.\n- Can I cancel my request? Yes, you can close or delete your request at any time from My Requests.",
+      },
+    },
+    {
+      slug: "help-center",
+      navPlacement: "none",
+      navOrder: 0,
+      ar: {
+        title: "مركز المساعدة",
+        content:
+          "مركز المساعدة هنا لدعمك في كل خطوة.\n\nإذا واجهت أي مشكلة تقنية أو كان لديك استفسار حول كيفية استخدام المنصة، يسعدنا مساعدتك.\n\nيمكنك أيضاً مراجعة صفحة الأسئلة الشائعة أو التواصل معنا مباشرة.",
+      },
+      en: {
+        title: "Help Center",
+        content:
+          "The Help Center is here to support you every step of the way.\n\nIf you run into a technical issue or have a question about how to use the platform, we're happy to help.\n\nYou can also check our FAQ page or contact us directly.",
+      },
+    },
+  ];
+
+  for (const page of pages) {
+    const extra = { navPlacement: page.navPlacement, navOrder: page.navOrder };
+    for (const [locale, { title, content }] of [
+      ["ar", page.ar],
+      ["en", page.en],
+    ] as const) {
+      await prisma.pageContent.upsert({
+        where: { page_section_locale: { page: page.slug, section: "main", locale } },
+        create: {
+          page: page.slug,
+          section: "main",
+          locale,
+          heading: title,
+          body: content,
+          isPublished: true,
+          extra,
+        },
+        // Only isPublished/extra are kept in sync on re-seed — title/
+        // content are left alone if an admin already edited them
+        // through the CMS, so re-running the seed never clobbers real
+        // admin edits.
+        update: { isPublished: true, extra },
+      });
+    }
+  }
+}
+
 async function main(): Promise<void> {
   console.log("Seeding currencies...");
   const currencyIdByCode = await seedCurrencies();
@@ -301,6 +465,9 @@ async function main(): Promise<void> {
 
   console.log("Seeding homepage content (hero, stats, trust badges)...");
   await seedHomepageContent();
+
+  console.log("Seeding static pages (about, contact, how-it-works, terms, privacy, faq, help-center)...");
+  await seedStaticPages();
 
   console.log("Seed complete.");
 }
