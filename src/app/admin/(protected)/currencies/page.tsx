@@ -1,28 +1,23 @@
-import { Coins } from "lucide-react";
 import { requirePermission } from "@/auth/guards";
-import { CmsPlaceholder } from "@/components/admin/CmsPlaceholder";
+import { currencyAdminService } from "@/services/admin/currency.service";
+import { CurrenciesManager } from "./CurrenciesManager";
 
 /**
- * CMS foundation placeholder (Checkpoint 01) — Currencies. The
- * underlying data already exists (`Currency` / `CountryCurrency`
- * models, seeded and used by the Create Request form today via
- * src/lib/request-form-options.ts). This screen is intentionally not
- * wired to a management UI yet; that lands in a future checkpoint.
+ * Currencies CMS management — real, database-backed, completing the
+ * Checkpoint 01 placeholder. Reuses the existing Currency model (see
+ * src/services/admin/currency.service.ts) — no new model, and no
+ * `isActive` toggle since the schema has no such column (see that
+ * service's docstring).
+ *
+ * `requirePermission` ensures only an authenticated ADMIN session
+ * reaches this page ("currencies:view" is not granted to MODERATOR —
+ * see src/auth/permissions.ts). Mutations go through the server
+ * actions in ./actions.ts, which re-validate "currencies:manage"
+ * server-side before touching the database.
  */
 export default async function AdminCurrenciesPage() {
   await requirePermission("currencies:view");
+  const currencies = await currencyAdminService.listCurrencies();
 
-  return (
-    <CmsPlaceholder
-      title="العملات"
-      description="إدارة العملات المدعومة على المنصة وربطها بالدول"
-      icon={Coins}
-      plannedControls={[
-        "عرض العملات الحالية (تُدار اليوم عبر جدول Currency الموجود)",
-        "إضافة عملة جديدة بدون أي تعديل برمجي",
-        "ربط/فصل عملة بدولة معينة عبر جدول CountryCurrency الموجود",
-        "تحديد العملة الافتراضية لكل دولة",
-      ]}
-    />
-  );
+  return <CurrenciesManager initialCurrencies={currencies} />;
 }

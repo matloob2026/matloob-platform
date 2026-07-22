@@ -57,6 +57,22 @@ export const HOMEPAGE_MANAGE_PERMISSION = "homepage:manage";
  */
 export const PAGE_MANAGE_PERMISSION = "pages:manage";
 
+/**
+ * Countries/Cities CMS completion: write actions (create/update/
+ * toggle/delete) require `localization:manage` — `localization:view`
+ * (already granted to ADMIN only since Checkpoint 01) continues to
+ * gate the sidebar link and read access. Same pattern as
+ * `categories:manage`/`homepage:manage`/`pages:manage` above.
+ */
+export const LOCALIZATION_MANAGE_PERMISSION = "localization:manage";
+
+/**
+ * Currencies CMS completion: write actions require
+ * `currencies:manage` — `currencies:view` (already ADMIN only since
+ * Checkpoint 01) continues to gate the sidebar link and read access.
+ */
+export const CURRENCY_MANAGE_PERMISSION = "currencies:manage";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);

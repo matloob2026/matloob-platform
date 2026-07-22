@@ -118,6 +118,11 @@ export interface CategoryInput {
   descriptionEn?: string | null;
   isActive?: boolean;
   sortOrder?: number;
+  /** Optional parent category — completes the hierarchy the `Category`
+   * model already supports (self-relation via `parentId`) but which
+   * the Admin form previously never exposed. `null`/omitted means a
+   * top-level category. */
+  parentId?: string | null;
 }
 
 export type UpdateCategoryInput = Partial<CategoryInput>;
@@ -210,6 +215,46 @@ function validateInput(input: CategoryInput): void {
   }
 }
 
+/** Confirms a chosen parent category exists, and — when editing an
+ * existing category (`selfId` provided) — that the chosen parent is
+ * neither the category itself nor one of its own descendants, which
+ * would create a cycle in the hierarchy. */
+async function validateParent(parentId: string | null | undefined, selfId?: string): Promise<void> {
+  if (!parentId) return;
+
+  if (selfId && parentId === selfId) {
+    throw new CategoryServiceError("لا يمكن أن يكون التصنيف أباً لنفسه.", "VALIDATION_ERROR");
+  }
+
+  const parent = await prisma.category.findUnique({ where: { id: parentId }, select: { id: true } });
+  if (!parent) {
+    throw new CategoryServiceError("التصنيف الأب المحدد غير موجود.", "VALIDATION_ERROR");
+  }
+
+  if (selfId) {
+    // Walk up the chosen parent's own ancestor chain — if it reaches
+    // `selfId`, the chosen parent is a descendant of this category and
+    // assigning it would create a cycle.
+    let current: string | null = parentId;
+    const seen = new Set<string>();
+    while (current) {
+      if (current === selfId) {
+        throw new CategoryServiceError(
+          "لا يمكن اختيار تصنيف فرعي كأب لهذا التصنيف — سيؤدي ذلك إلى تسلسل دائري.",
+          "VALIDATION_ERROR"
+        );
+      }
+      if (seen.has(current)) break; // defensive: pre-existing cycle, stop rather than loop forever
+      seen.add(current);
+      const row: { parentId: string | null } | null = await prisma.category.findUnique({
+        where: { id: current },
+        select: { parentId: true },
+      });
+      current = row?.parentId ?? null;
+    }
+  }
+}
+
 /** True if `actorId` resolves to a real `User` row — see the class
  * docstring above for why this gate exists. */
 async function actorExists(actorId: string): Promise<boolean> {
@@ -249,6 +294,7 @@ export class CategoryAdminService {
 
   async createCategory(input: CategoryInput, actorId: string): Promise<AdminCategoryListItem> {
     validateInput(input);
+    await validateParent(input.parentId);
 
     const existing = await prisma.category.findUnique({ where: { slug: input.slug } });
     if (existing) {
@@ -263,6 +309,7 @@ export class CategoryAdminService {
           slug: input.slug,
           isActive: input.isActive ?? true,
           sortOrder: input.sortOrder ?? 0,
+          parentId: input.parentId ?? null,
           translations: {
             create: [
               { locale: "ar", name: input.nameAr, description: input.descriptionAr ?? null },
@@ -311,8 +358,10 @@ export class CategoryAdminService {
         input.descriptionEn ?? before.translations.find((t: TranslationRow) => t.locale === "en")?.description ?? null,
       isActive: input.isActive ?? before.isActive,
       sortOrder: input.sortOrder ?? before.sortOrder,
+      parentId: input.parentId !== undefined ? input.parentId : before.parentId,
     };
     validateInput(merged);
+    await validateParent(merged.parentId, id);
 
     if (merged.slug !== before.slug) {
       const slugTaken = await prisma.category.findUnique({ where: { slug: merged.slug } });
@@ -330,6 +379,7 @@ export class CategoryAdminService {
           slug: merged.slug,
           isActive: merged.isActive,
           sortOrder: merged.sortOrder,
+          parentId: merged.parentId ?? null,
           translations: {
             upsert: [
               {

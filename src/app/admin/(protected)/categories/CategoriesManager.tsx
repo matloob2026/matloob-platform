@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/admin/PageHeader";
 import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Input, Textarea, FormField, Toggle } from "@/components/ui/Field";
+import { Input, Textarea, Select, FormField, Toggle } from "@/components/ui/Field";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
@@ -29,6 +29,7 @@ interface FormValues {
   descriptionEn: string;
   isActive: boolean;
   sortOrder: number;
+  parentId: string;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -39,6 +40,7 @@ const EMPTY_FORM: FormValues = {
   descriptionEn: "",
   isActive: true,
   sortOrder: 0,
+  parentId: "",
 };
 
 function toFormValues(category: AdminCategoryListItem): FormValues {
@@ -50,6 +52,7 @@ function toFormValues(category: AdminCategoryListItem): FormValues {
     descriptionEn: category.descriptionEn ?? "",
     isActive: category.isActive,
     sortOrder: category.sortOrder,
+    parentId: category.parentId ?? "",
   };
 }
 
@@ -109,6 +112,7 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
         descriptionEn: formValues.descriptionEn.trim() || null,
         isActive: formValues.isActive,
         sortOrder: formValues.sortOrder,
+        parentId: formValues.parentId || null,
       };
 
       const result = editingId
@@ -170,6 +174,14 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
       ),
     },
     { key: "slug", header: "الرابط", render: (c) => <code className="text-xs" dir="ltr">/{c.slug}</code> },
+    {
+      key: "parent",
+      header: "التصنيف الأب",
+      render: (c) => {
+        const parent = c.parentId ? initialCategories.find((p) => p.id === c.parentId) : null;
+        return parent ? <span className="text-xs text-text-500">{parent.nameAr}</span> : <span className="text-xs text-text-400">—</span>;
+      },
+    },
     { key: "count", header: "عدد الطلبات", render: (c) => c.requestCount.toLocaleString("ar") },
     {
       key: "status",
@@ -282,6 +294,21 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
                   value={formValues.sortOrder}
                   onChange={(e) => setFormValues((v) => ({ ...v, sortOrder: Number(e.target.value) || 0 }))}
                 />
+              </FormField>
+              <FormField label="التصنيف الأب (اختياري)" hint="لإنشاء تصنيف فرعي ضمن تصنيف رئيسي">
+                <Select
+                  value={formValues.parentId}
+                  onChange={(e) => setFormValues((v) => ({ ...v, parentId: e.target.value }))}
+                >
+                  <option value="">بدون (تصنيف رئيسي)</option>
+                  {initialCategories
+                    .filter((c) => c.id !== editingId)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nameAr}
+                      </option>
+                    ))}
+                </Select>
               </FormField>
               <FormField label="الأيقونة / الصورة">
                 <Button variant="outline" size="sm" type="button" disabled>
