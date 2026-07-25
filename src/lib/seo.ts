@@ -42,26 +42,39 @@ interface SeoSettingRow {
   noIndex: boolean;
 }
 
+/**
+ * Prisma requires a real (non-null) string for every field inside a
+ * compound `@@unique` constraint's lookup key — even though
+ * `SeoSetting.entityId` is `String?` in the schema (nullable, exactly
+ * so "no specific entity" / global rows can exist), `findUnique`'s
+ * compound-key input type does not accept `null` there. This isn't a
+ * workaround to "hide" the type error: a compound unique index with a
+ * NULL component isn't a valid equality lookup key in SQL either
+ * (NULL is never equal to NULL), so Prisma's generated types correctly
+ * disallow it.
+ *
+ * The fix — used consistently by every reader/writer of `SeoSetting`
+ * (see src/services/admin/seo.service.ts's own `normalizeEntityId`) —
+ * is a non-null sentinel: `entityId ?? ""`. Every "global" row is
+ * therefore actually stored with `entityId: ""`, never a real SQL
+ * NULL. Callers of `resolveSeo`/`readSeoRow` still pass/receive
+ * `entityId: string | null` — `null` still means "global" from the
+ * outside — this normalization is purely an internal storage detail.
+ */
+function normalizeEntityId(entityId: string | null): string {
+  return entityId ?? "";
+}
+
 async function readSeoRow(
   entityType: string,
   entityId: string | null,
   locale: SeoLocale
 ): Promise<SeoSettingRow | null> {
-  if (entityId === null) {
-    return prisma.seoSetting.findFirst({
-      where: {
-        entityType,
-        entityId: null,
-        locale,
-      },
-    });
-  }
-
   return prisma.seoSetting.findUnique({
     where: {
       entityType_entityId_locale: {
         entityType,
-        entityId,
+        entityId: normalizeEntityId(entityId),
         locale,
       },
     },

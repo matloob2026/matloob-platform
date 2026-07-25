@@ -5,8 +5,11 @@
  * (prisma/schema.prisma) — `(entityType, entityId, locale) ->
  * {metaTitle, metaDescription, canonicalUrl, noIndex, ogImageMediaId}`
  * — already designed to cover "homepage" | "category" | "request" |
- * "global" entity types, with `entityId: null` for global/homepage-
- * level rows. No new model, no migration.
+ * "global" entity types, with `entityId: null` meaning global/
+ * homepage-level rows from every caller's point of view (this
+ * service's own callers, and src/lib/seo.ts's `resolveSeo`). See
+ * `normalizeEntityId` below for the one storage-level detail this
+ * implies. No new model, no migration.
  *
  * FIELD SCOPE (why some requested fields aren't here): the schema has
  * no separate Open Graph title/description columns, no keywords
@@ -72,6 +75,32 @@ async function actorExists(actorId: string): Promise<boolean> {
   return Boolean(actor);
 }
 
+/**
+ * Prisma requires a real (non-null) string for every field inside a
+ * compound `@@unique` constraint's lookup key — `SeoSetting.entityId`
+ * is `String?` in the schema (nullable, exactly so "no specific
+ * entity" / global rows can exist), but `findUnique`/`upsert`'s
+ * compound-key input type does not accept `null` there. This is not a
+ * type-safety workaround: a compound unique index with a NULL
+ * component isn't a valid equality lookup key in SQL either (NULL is
+ * never equal to NULL), so Prisma's generated types correctly
+ * disallow it — the fix has to be a real, non-null sentinel value,
+ * used consistently on both the read and write side.
+ *
+ * Every "global"/no-specific-entity row is therefore actually stored
+ * with `entityId: ""`, never a real SQL NULL — matching the identical
+ * fix in src/lib/seo.ts's `normalizeEntityId`. Every method below that
+ * touches `entityId` (`getSeo`, `saveSeo`) normalizes through this
+ * same function, so a row written by one always matches what the
+ * other reads. The public methods still accept `entityId: string |
+ * null` — `null` still means "global" to every caller (both this
+ * service's own callers and src/lib/seo.ts's `resolveSeo`) — this
+ * normalization is purely an internal storage detail.
+ */
+function normalizeEntityId(entityId: string | null): string {
+  return entityId ?? "";
+}
+
 function warnAuditSkipped(action: string, entityId: string, actorId: string): void {
   console.warn(
     `[AdminAuditLog] skipped for action=${action} entityId=${entityId} — ` +
@@ -84,7 +113,9 @@ export class SeoAdminService {
   /** Reads the (ar, en) pair for one entity — used by the Admin form
    * to pre-fill. */
   async getSeo(entityType: string, entityId: string | null): Promise<{ ar: SeoFields; en: SeoFields }> {
-    const rows = await prisma.seoSetting.findMany({ where: { entityType, entityId } });
+    const rows = await prisma.seoSetting.findMany({
+      where: { entityType, entityId: normalizeEntityId(entityId) },
+    });
     const ar = rows.find((r: { locale: string }) => r.locale === "ar");
     const en = rows.find((r: { locale: string }) => r.locale === "en");
     return {
@@ -118,6 +149,7 @@ export class SeoAdminService {
     actorId: string
   ): Promise<{ ar: SeoFields; en: SeoFields }> {
     const hasRealActor = await actorExists(actorId);
+    const normalizedEntityId = normalizeEntityId(entityId);
 
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const saved: { ar: SeoFields; en: SeoFields } = { ar: { ...EMPTY_SEO }, en: { ...EMPTY_SEO } };
@@ -132,10 +164,10 @@ export class SeoAdminService {
         };
 
         await tx.seoSetting.upsert({
-          where: { entityType_entityId_locale: { entityType, entityId, locale } },
+          where: { entityType_entityId_locale: { entityType, entityId: normalizedEntityId, locale } },
           create: {
             entityType,
-            entityId,
+            entityId: normalizedEntityId,
             locale,
             metaTitle: merged.metaTitle || null,
             metaDescription: merged.metaDescription || null,

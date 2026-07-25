@@ -47,7 +47,7 @@ export interface HomepageContentService {
  *         prisma.homepageStat.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, include: { translations: true, icon: true } }),
  *         prisma.trustBadge.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' }, include: { translations: true, icon: true } }),
  *         prisma.socialLink.findMany({ where: { isActive: true }, orderBy: { sortOrder: 'asc' } }),
- *         prisma.seoSetting.findUnique({ where: { entityType_entityId_locale: { entityType: 'homepage', entityId: null, locale } } }),
+ *         prisma.seoSetting.findUnique({ where: { entityType_entityId_locale: { entityType: 'homepage', entityId: '', locale } } }), // '' = global/homepage row — see src/lib/seo.ts's normalizeEntityId
  *         getBrandingSettings(), // reads SiteSetting group="branding"
  *       ]);
  *
