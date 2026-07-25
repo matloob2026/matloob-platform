@@ -42,9 +42,29 @@ interface SeoSettingRow {
   noIndex: boolean;
 }
 
-async function readSeoRow(entityType: string, entityId: string | null, locale: SeoLocale): Promise<SeoSettingRow | null> {
+async function readSeoRow(
+  entityType: string,
+  entityId: string | null,
+  locale: SeoLocale
+): Promise<SeoSettingRow | null> {
+  if (entityId === null) {
+    return prisma.seoSetting.findFirst({
+      where: {
+        entityType,
+        entityId: null,
+        locale,
+      },
+    });
+  }
+
   return prisma.seoSetting.findUnique({
-    where: { entityType_entityId_locale: { entityType, entityId, locale } },
+    where: {
+      entityType_entityId_locale: {
+        entityType,
+        entityId,
+        locale,
+      },
+    },
   });
 }
 
