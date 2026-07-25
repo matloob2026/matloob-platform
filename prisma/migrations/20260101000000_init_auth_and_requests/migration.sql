@@ -24,28 +24,72 @@
 -- =====================================================================
 -- EXTENSIONS
 -- =====================================================================
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+DO $$
+BEGIN
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+  EXCEPTION WHEN insufficient_privilege THEN
+    -- Managed Postgres providers commonly restrict CREATE EXTENSION to
+    -- superusers. Not fatal: PostgreSQL 13+ has gen_random_uuid() built
+    -- into core, so every DEFAULT gen_random_uuid() below works with or
+    -- without pgcrypto actually installed.
+    RAISE NOTICE 'Skipping pgcrypto extension (insufficient privilege) - gen_random_uuid() is built into PostgreSQL 13+ regardless.';
+  END;
+END $$;
 
 -- =====================================================================
 -- ENUMS
 -- =====================================================================
-CREATE TYPE "UserRole" AS ENUM ('BUYER', 'SUPPLIER', 'BOTH', 'ADMIN', 'MODERATOR');
-CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION', 'BANNED');
-CREATE TYPE "RequestStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'IN_PROGRESS', 'FULFILLED', 'EXPIRED', 'CLOSED_BY_BUYER', 'REMOVED_BY_ADMIN');
-CREATE TYPE "OfferStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED');
-CREATE TYPE "ConversationStatus" AS ENUM ('OPEN', 'ARCHIVED', 'BLOCKED');
-CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'PUSH');
-CREATE TYPE "NotificationType" AS ENUM ('NEW_OFFER', 'OFFER_ACCEPTED', 'OFFER_REJECTED', 'NEW_MESSAGE', 'REQUEST_EXPIRING', 'REQUEST_APPROVED', 'REQUEST_REJECTED', 'SYSTEM_ANNOUNCEMENT', 'AI_SUGGESTION');
-CREATE TYPE "ReportReason" AS ENUM ('SPAM', 'SCAM_OR_FRAUD', 'INAPPROPRIATE_CONTENT', 'DUPLICATE', 'MISLEADING_PRICE', 'OTHER');
-CREATE TYPE "ReportStatus" AS ENUM ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'DISMISSED');
-CREATE TYPE "MediaOwnerType" AS ENUM ('REQUEST', 'USER_PROFILE', 'CATEGORY', 'PAGE_CONTENT', 'HOMEPAGE_HERO', 'SITE_LOGO', 'ADMIN_UPLOAD');
-CREATE TYPE "SettingValueType" AS ENUM ('STRING', 'NUMBER', 'BOOLEAN', 'JSON', 'COLOR', 'IMAGE_URL', 'RICH_TEXT');
+DO $$ BEGIN
+  CREATE TYPE "UserRole" AS ENUM ('BUYER', 'SUPPLIER', 'BOTH', 'ADMIN', 'MODERATOR');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION', 'BANNED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "RequestStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'IN_PROGRESS', 'FULFILLED', 'EXPIRED', 'CLOSED_BY_BUYER', 'REMOVED_BY_ADMIN');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "OfferStatus" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED', 'WITHDRAWN', 'EXPIRED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "ConversationStatus" AS ENUM ('OPEN', 'ARCHIVED', 'BLOCKED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "NotificationChannel" AS ENUM ('IN_APP', 'EMAIL', 'SMS', 'PUSH');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "NotificationType" AS ENUM ('NEW_OFFER', 'OFFER_ACCEPTED', 'OFFER_REJECTED', 'NEW_MESSAGE', 'REQUEST_EXPIRING', 'REQUEST_APPROVED', 'REQUEST_REJECTED', 'SYSTEM_ANNOUNCEMENT', 'AI_SUGGESTION');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "ReportReason" AS ENUM ('SPAM', 'SCAM_OR_FRAUD', 'INAPPROPRIATE_CONTENT', 'DUPLICATE', 'MISLEADING_PRICE', 'OTHER');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "ReportStatus" AS ENUM ('OPEN', 'UNDER_REVIEW', 'RESOLVED', 'DISMISSED');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "MediaOwnerType" AS ENUM ('REQUEST', 'USER_PROFILE', 'CATEGORY', 'PAGE_CONTENT', 'HOMEPAGE_HERO', 'SITE_LOGO', 'ADMIN_UPLOAD');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  CREATE TYPE "SettingValueType" AS ENUM ('STRING', 'NUMBER', 'BOOLEAN', 'JSON', 'COLOR', 'IMAGE_URL', 'RICH_TEXT');
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
 -- =====================================================================
 -- TABLES (columns + primary keys only — foreign keys added at the end)
 -- =====================================================================
 
-CREATE TABLE "countries" (
+CREATE TABLE IF NOT EXISTS "countries" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "code" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT false,
@@ -57,7 +101,7 @@ CREATE TABLE "countries" (
     CONSTRAINT "countries_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "country_translations" (
+CREATE TABLE IF NOT EXISTS "country_translations" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "countryId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
@@ -65,7 +109,7 @@ CREATE TABLE "country_translations" (
     CONSTRAINT "country_translations_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "currencies" (
+CREATE TABLE IF NOT EXISTS "currencies" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "code" TEXT NOT NULL,
     "symbol" TEXT NOT NULL,
@@ -74,7 +118,7 @@ CREATE TABLE "currencies" (
     CONSTRAINT "currencies_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "country_currencies" (
+CREATE TABLE IF NOT EXISTS "country_currencies" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "countryId" TEXT NOT NULL,
     "currencyId" TEXT NOT NULL,
@@ -82,7 +126,7 @@ CREATE TABLE "country_currencies" (
     CONSTRAINT "country_currencies_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "cities" (
+CREATE TABLE IF NOT EXISTS "cities" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "countryId" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -95,7 +139,7 @@ CREATE TABLE "cities" (
     CONSTRAINT "cities_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "city_translations" (
+CREATE TABLE IF NOT EXISTS "city_translations" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "cityId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
@@ -103,7 +147,7 @@ CREATE TABLE "city_translations" (
     CONSTRAINT "city_translations_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "users" (
+CREATE TABLE IF NOT EXISTS "users" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "email" TEXT,
     "phone" TEXT,
@@ -119,7 +163,7 @@ CREATE TABLE "users" (
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "user_profiles" (
+CREATE TABLE IF NOT EXISTS "user_profiles" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "displayName" TEXT NOT NULL,
@@ -136,7 +180,7 @@ CREATE TABLE "user_profiles" (
     CONSTRAINT "user_profiles_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "oauth_accounts" (
+CREATE TABLE IF NOT EXISTS "oauth_accounts" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "provider" TEXT NOT NULL,
@@ -147,7 +191,7 @@ CREATE TABLE "oauth_accounts" (
     CONSTRAINT "oauth_accounts_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "sessions" (
+CREATE TABLE IF NOT EXISTS "sessions" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -158,7 +202,7 @@ CREATE TABLE "sessions" (
     CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "email_verification_tokens" (
+CREATE TABLE IF NOT EXISTS "email_verification_tokens" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -169,7 +213,7 @@ CREATE TABLE "email_verification_tokens" (
     CONSTRAINT "email_verification_tokens_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "password_reset_tokens" (
+CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "tokenHash" TEXT NOT NULL,
@@ -179,7 +223,7 @@ CREATE TABLE "password_reset_tokens" (
     CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "categories" (
+CREATE TABLE IF NOT EXISTS "categories" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "slug" TEXT NOT NULL,
     "parentId" TEXT,
@@ -193,7 +237,7 @@ CREATE TABLE "categories" (
     CONSTRAINT "categories_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "category_translations" (
+CREATE TABLE IF NOT EXISTS "category_translations" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "categoryId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
@@ -202,7 +246,7 @@ CREATE TABLE "category_translations" (
     CONSTRAINT "category_translations_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "requests" (
+CREATE TABLE IF NOT EXISTS "requests" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "ownerId" TEXT NOT NULL,
     "categoryId" TEXT NOT NULL,
@@ -226,7 +270,7 @@ CREATE TABLE "requests" (
     CONSTRAINT "requests_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "offers" (
+CREATE TABLE IF NOT EXISTS "offers" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "requestId" TEXT NOT NULL,
     "supplierId" TEXT NOT NULL,
@@ -239,7 +283,7 @@ CREATE TABLE "offers" (
     CONSTRAINT "offers_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "conversations" (
+CREATE TABLE IF NOT EXISTS "conversations" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "requestId" TEXT NOT NULL,
     "offerId" TEXT,
@@ -249,7 +293,7 @@ CREATE TABLE "conversations" (
     CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "conversation_participants" (
+CREATE TABLE IF NOT EXISTS "conversation_participants" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "conversationId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -258,7 +302,7 @@ CREATE TABLE "conversation_participants" (
     CONSTRAINT "conversation_participants_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "messages" (
+CREATE TABLE IF NOT EXISTS "messages" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "conversationId" TEXT NOT NULL,
     "senderId" TEXT NOT NULL,
@@ -269,7 +313,7 @@ CREATE TABLE "messages" (
     CONSTRAINT "messages_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "notifications" (
+CREATE TABLE IF NOT EXISTS "notifications" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "type" "NotificationType" NOT NULL,
@@ -283,7 +327,7 @@ CREATE TABLE "notifications" (
     CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "favorites" (
+CREATE TABLE IF NOT EXISTS "favorites" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "userId" TEXT NOT NULL,
     "requestId" TEXT NOT NULL,
@@ -291,7 +335,7 @@ CREATE TABLE "favorites" (
     CONSTRAINT "favorites_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "reports" (
+CREATE TABLE IF NOT EXISTS "reports" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "reporterId" TEXT NOT NULL,
     "reportedUserId" TEXT,
@@ -305,7 +349,7 @@ CREATE TABLE "reports" (
     CONSTRAINT "reports_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "media" (
+CREATE TABLE IF NOT EXISTS "media" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "ownerType" "MediaOwnerType" NOT NULL,
     "url" TEXT NOT NULL,
@@ -320,7 +364,7 @@ CREATE TABLE "media" (
     CONSTRAINT "media_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "site_settings" (
+CREATE TABLE IF NOT EXISTS "site_settings" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "group" TEXT NOT NULL,
     "key" TEXT NOT NULL,
@@ -332,7 +376,7 @@ CREATE TABLE "site_settings" (
     CONSTRAINT "site_settings_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "page_contents" (
+CREATE TABLE IF NOT EXISTS "page_contents" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "page" TEXT NOT NULL,
     "section" TEXT NOT NULL,
@@ -349,7 +393,7 @@ CREATE TABLE "page_contents" (
     CONSTRAINT "page_contents_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "homepage_stats" (
+CREATE TABLE IF NOT EXISTS "homepage_stats" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "key" TEXT NOT NULL,
     "value" INTEGER NOT NULL,
@@ -360,7 +404,7 @@ CREATE TABLE "homepage_stats" (
     CONSTRAINT "homepage_stats_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "homepage_stat_translations" (
+CREATE TABLE IF NOT EXISTS "homepage_stat_translations" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "statId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
@@ -368,7 +412,7 @@ CREATE TABLE "homepage_stat_translations" (
     CONSTRAINT "homepage_stat_translations_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "trust_badges" (
+CREATE TABLE IF NOT EXISTS "trust_badges" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "iconMediaId" TEXT,
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
@@ -376,7 +420,7 @@ CREATE TABLE "trust_badges" (
     CONSTRAINT "trust_badges_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "trust_badge_translations" (
+CREATE TABLE IF NOT EXISTS "trust_badge_translations" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "badgeId" TEXT NOT NULL,
     "locale" TEXT NOT NULL,
@@ -384,7 +428,7 @@ CREATE TABLE "trust_badge_translations" (
     CONSTRAINT "trust_badge_translations_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "social_links" (
+CREATE TABLE IF NOT EXISTS "social_links" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "platform" TEXT NOT NULL,
     "url" TEXT NOT NULL,
@@ -393,7 +437,7 @@ CREATE TABLE "social_links" (
     CONSTRAINT "social_links_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "seo_settings" (
+CREATE TABLE IF NOT EXISTS "seo_settings" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "entityType" TEXT NOT NULL,
     "entityId" TEXT,
@@ -407,7 +451,7 @@ CREATE TABLE "seo_settings" (
     CONSTRAINT "seo_settings_pkey" PRIMARY KEY ("id")
 );
 
-CREATE TABLE "admin_audit_logs" (
+CREATE TABLE IF NOT EXISTS "admin_audit_logs" (
     "id" TEXT NOT NULL DEFAULT gen_random_uuid(),
     "actorId" TEXT NOT NULL,
     "action" TEXT NOT NULL,
@@ -422,12 +466,12 @@ CREATE TABLE "admin_audit_logs" (
 -- Implicit many-to-many join tables (Prisma's own naming convention:
 -- "_" + relation name, columns "A"/"B" referencing the two sides in
 -- alphabetical-by-model-name order)
-CREATE TABLE "_RequestMedia" (
+CREATE TABLE IF NOT EXISTS "_RequestMedia" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
 
-CREATE TABLE "_MessageMedia" (
+CREATE TABLE IF NOT EXISTS "_MessageMedia" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -435,119 +479,260 @@ CREATE TABLE "_MessageMedia" (
 -- =====================================================================
 -- UNIQUE CONSTRAINTS / UNIQUE INDEXES
 -- =====================================================================
-CREATE UNIQUE INDEX "countries_code_key" ON "countries"("code");
-CREATE UNIQUE INDEX "country_translations_countryId_locale_key" ON "country_translations"("countryId", "locale");
-CREATE UNIQUE INDEX "currencies_code_key" ON "currencies"("code");
-CREATE UNIQUE INDEX "country_currencies_countryId_currencyId_key" ON "country_currencies"("countryId", "currencyId");
-CREATE UNIQUE INDEX "cities_countryId_slug_key" ON "cities"("countryId", "slug");
-CREATE UNIQUE INDEX "city_translations_cityId_locale_key" ON "city_translations"("cityId", "locale");
-CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
-CREATE UNIQUE INDEX "users_phone_key" ON "users"("phone");
-CREATE UNIQUE INDEX "user_profiles_userId_key" ON "user_profiles"("userId");
-CREATE UNIQUE INDEX "oauth_accounts_provider_providerAccountId_key" ON "oauth_accounts"("provider", "providerAccountId");
-CREATE UNIQUE INDEX "sessions_tokenHash_key" ON "sessions"("tokenHash");
-CREATE UNIQUE INDEX "email_verification_tokens_tokenHash_key" ON "email_verification_tokens"("tokenHash");
-CREATE UNIQUE INDEX "password_reset_tokens_tokenHash_key" ON "password_reset_tokens"("tokenHash");
-CREATE UNIQUE INDEX "categories_slug_key" ON "categories"("slug");
-CREATE UNIQUE INDEX "category_translations_categoryId_locale_key" ON "category_translations"("categoryId", "locale");
-CREATE UNIQUE INDEX "offers_requestId_supplierId_key" ON "offers"("requestId", "supplierId");
-CREATE UNIQUE INDEX "conversations_offerId_key" ON "conversations"("offerId");
-CREATE UNIQUE INDEX "conversation_participants_conversationId_userId_key" ON "conversation_participants"("conversationId", "userId");
-CREATE UNIQUE INDEX "favorites_userId_requestId_key" ON "favorites"("userId", "requestId");
-CREATE UNIQUE INDEX "site_settings_group_key_key" ON "site_settings"("group", "key");
-CREATE UNIQUE INDEX "page_contents_page_section_locale_key" ON "page_contents"("page", "section", "locale");
-CREATE UNIQUE INDEX "homepage_stats_key_key" ON "homepage_stats"("key");
-CREATE UNIQUE INDEX "homepage_stat_translations_statId_locale_key" ON "homepage_stat_translations"("statId", "locale");
-CREATE UNIQUE INDEX "trust_badge_translations_badgeId_locale_key" ON "trust_badge_translations"("badgeId", "locale");
-CREATE UNIQUE INDEX "seo_settings_entityType_entityId_locale_key" ON "seo_settings"("entityType", "entityId", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "countries_code_key" ON "countries"("code");
+CREATE UNIQUE INDEX IF NOT EXISTS "country_translations_countryId_locale_key" ON "country_translations"("countryId", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "currencies_code_key" ON "currencies"("code");
+CREATE UNIQUE INDEX IF NOT EXISTS "country_currencies_countryId_currencyId_key" ON "country_currencies"("countryId", "currencyId");
+CREATE UNIQUE INDEX IF NOT EXISTS "cities_countryId_slug_key" ON "cities"("countryId", "slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "city_translations_cityId_locale_key" ON "city_translations"("cityId", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_email_key" ON "users"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "users_phone_key" ON "users"("phone");
+CREATE UNIQUE INDEX IF NOT EXISTS "user_profiles_userId_key" ON "user_profiles"("userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "oauth_accounts_provider_providerAccountId_key" ON "oauth_accounts"("provider", "providerAccountId");
+CREATE UNIQUE INDEX IF NOT EXISTS "sessions_tokenHash_key" ON "sessions"("tokenHash");
+CREATE UNIQUE INDEX IF NOT EXISTS "email_verification_tokens_tokenHash_key" ON "email_verification_tokens"("tokenHash");
+CREATE UNIQUE INDEX IF NOT EXISTS "password_reset_tokens_tokenHash_key" ON "password_reset_tokens"("tokenHash");
+CREATE UNIQUE INDEX IF NOT EXISTS "categories_slug_key" ON "categories"("slug");
+CREATE UNIQUE INDEX IF NOT EXISTS "category_translations_categoryId_locale_key" ON "category_translations"("categoryId", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "offers_requestId_supplierId_key" ON "offers"("requestId", "supplierId");
+CREATE UNIQUE INDEX IF NOT EXISTS "conversations_offerId_key" ON "conversations"("offerId");
+CREATE UNIQUE INDEX IF NOT EXISTS "conversation_participants_conversationId_userId_key" ON "conversation_participants"("conversationId", "userId");
+CREATE UNIQUE INDEX IF NOT EXISTS "favorites_userId_requestId_key" ON "favorites"("userId", "requestId");
+CREATE UNIQUE INDEX IF NOT EXISTS "site_settings_group_key_key" ON "site_settings"("group", "key");
+CREATE UNIQUE INDEX IF NOT EXISTS "page_contents_page_section_locale_key" ON "page_contents"("page", "section", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "homepage_stats_key_key" ON "homepage_stats"("key");
+CREATE UNIQUE INDEX IF NOT EXISTS "homepage_stat_translations_statId_locale_key" ON "homepage_stat_translations"("statId", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "trust_badge_translations_badgeId_locale_key" ON "trust_badge_translations"("badgeId", "locale");
+CREATE UNIQUE INDEX IF NOT EXISTS "seo_settings_entityType_entityId_locale_key" ON "seo_settings"("entityType", "entityId", "locale");
 
 -- =====================================================================
 -- REGULAR (NON-UNIQUE) INDEXES
 -- =====================================================================
-CREATE INDEX "cities_countryId_isActive_idx" ON "cities"("countryId", "isActive");
-CREATE INDEX "users_role_status_idx" ON "users"("role", "status");
-CREATE INDEX "sessions_userId_idx" ON "sessions"("userId");
-CREATE INDEX "email_verification_tokens_userId_idx" ON "email_verification_tokens"("userId");
-CREATE INDEX "password_reset_tokens_userId_idx" ON "password_reset_tokens"("userId");
-CREATE INDEX "categories_isActive_sortOrder_idx" ON "categories"("isActive", "sortOrder");
-CREATE INDEX "requests_status_categoryId_countryId_idx" ON "requests"("status", "categoryId", "countryId");
-CREATE INDEX "requests_ownerId_idx" ON "requests"("ownerId");
-CREATE INDEX "offers_requestId_status_idx" ON "offers"("requestId", "status");
-CREATE INDEX "conversations_requestId_idx" ON "conversations"("requestId");
-CREATE INDEX "messages_conversationId_createdAt_idx" ON "messages"("conversationId", "createdAt");
-CREATE INDEX "notifications_userId_isRead_idx" ON "notifications"("userId", "isRead");
-CREATE INDEX "reports_status_idx" ON "reports"("status");
-CREATE INDEX "media_ownerType_idx" ON "media"("ownerType");
-CREATE INDEX "admin_audit_logs_entityType_entityId_idx" ON "admin_audit_logs"("entityType", "entityId");
+CREATE INDEX IF NOT EXISTS "cities_countryId_isActive_idx" ON "cities"("countryId", "isActive");
+CREATE INDEX IF NOT EXISTS "users_role_status_idx" ON "users"("role", "status");
+CREATE INDEX IF NOT EXISTS "sessions_userId_idx" ON "sessions"("userId");
+CREATE INDEX IF NOT EXISTS "email_verification_tokens_userId_idx" ON "email_verification_tokens"("userId");
+CREATE INDEX IF NOT EXISTS "password_reset_tokens_userId_idx" ON "password_reset_tokens"("userId");
+CREATE INDEX IF NOT EXISTS "categories_isActive_sortOrder_idx" ON "categories"("isActive", "sortOrder");
+CREATE INDEX IF NOT EXISTS "requests_status_categoryId_countryId_idx" ON "requests"("status", "categoryId", "countryId");
+CREATE INDEX IF NOT EXISTS "requests_ownerId_idx" ON "requests"("ownerId");
+CREATE INDEX IF NOT EXISTS "offers_requestId_status_idx" ON "offers"("requestId", "status");
+CREATE INDEX IF NOT EXISTS "conversations_requestId_idx" ON "conversations"("requestId");
+CREATE INDEX IF NOT EXISTS "messages_conversationId_createdAt_idx" ON "messages"("conversationId", "createdAt");
+CREATE INDEX IF NOT EXISTS "notifications_userId_isRead_idx" ON "notifications"("userId", "isRead");
+CREATE INDEX IF NOT EXISTS "reports_status_idx" ON "reports"("status");
+CREATE INDEX IF NOT EXISTS "media_ownerType_idx" ON "media"("ownerType");
+CREATE INDEX IF NOT EXISTS "admin_audit_logs_entityType_entityId_idx" ON "admin_audit_logs"("entityType", "entityId");
 
 -- Implicit m2m join table indexes (Prisma convention: composite unique
 -- + a secondary index on B for reverse-direction lookups)
-CREATE UNIQUE INDEX "_RequestMedia_AB_unique" ON "_RequestMedia"("A", "B");
-CREATE INDEX "_RequestMedia_B_index" ON "_RequestMedia"("B");
-CREATE UNIQUE INDEX "_MessageMedia_AB_unique" ON "_MessageMedia"("A", "B");
-CREATE INDEX "_MessageMedia_B_index" ON "_MessageMedia"("B");
+CREATE UNIQUE INDEX IF NOT EXISTS "_RequestMedia_AB_unique" ON "_RequestMedia"("A", "B");
+CREATE INDEX IF NOT EXISTS "_RequestMedia_B_index" ON "_RequestMedia"("B");
+CREATE UNIQUE INDEX IF NOT EXISTS "_MessageMedia_AB_unique" ON "_MessageMedia"("A", "B");
+CREATE INDEX IF NOT EXISTS "_MessageMedia_B_index" ON "_MessageMedia"("B");
 
 -- =====================================================================
 -- FOREIGN KEYS
 -- =====================================================================
-ALTER TABLE "country_translations" ADD CONSTRAINT "country_translations_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "country_currencies" ADD CONSTRAINT "country_currencies_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "country_currencies" ADD CONSTRAINT "country_currencies_currencyId_fkey" FOREIGN KEY ("currencyId") REFERENCES "currencies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "cities" ADD CONSTRAINT "cities_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "city_translations" ADD CONSTRAINT "city_translations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "country_translations" ADD CONSTRAINT "country_translations_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "country_currencies" ADD CONSTRAINT "country_currencies_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "country_currencies" ADD CONSTRAINT "country_currencies_currencyId_fkey" FOREIGN KEY ("currencyId") REFERENCES "currencies"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "cities" ADD CONSTRAINT "cities_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "city_translations" ADD CONSTRAINT "city_translations_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_avatarMediaId_fkey" FOREIGN KEY ("avatarMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "user_profiles" ADD CONSTRAINT "user_profiles_avatarMediaId_fkey" FOREIGN KEY ("avatarMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "email_verification_tokens" ADD CONSTRAINT "email_verification_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "sessions" ADD CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "email_verification_tokens" ADD CONSTRAINT "email_verification_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "categories" ADD CONSTRAINT "categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "categories" ADD CONSTRAINT "categories_iconMediaId_fkey" FOREIGN KEY ("iconMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "categories" ADD CONSTRAINT "categories_imageMediaId_fkey" FOREIGN KEY ("imageMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "category_translations" ADD CONSTRAINT "category_translations_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "categories" ADD CONSTRAINT "categories_parentId_fkey" FOREIGN KEY ("parentId") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "categories" ADD CONSTRAINT "categories_iconMediaId_fkey" FOREIGN KEY ("iconMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "categories" ADD CONSTRAINT "categories_imageMediaId_fkey" FOREIGN KEY ("imageMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "category_translations" ADD CONSTRAINT "category_translations_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "requests" ADD CONSTRAINT "requests_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "requests" ADD CONSTRAINT "requests_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "requests" ADD CONSTRAINT "requests_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "requests" ADD CONSTRAINT "requests_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "requests" ADD CONSTRAINT "requests_currencyId_fkey" FOREIGN KEY ("currencyId") REFERENCES "currencies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "requests" ADD CONSTRAINT "requests_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "requests" ADD CONSTRAINT "requests_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "requests" ADD CONSTRAINT "requests_countryId_fkey" FOREIGN KEY ("countryId") REFERENCES "countries"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "requests" ADD CONSTRAINT "requests_cityId_fkey" FOREIGN KEY ("cityId") REFERENCES "cities"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "requests" ADD CONSTRAINT "requests_currencyId_fkey" FOREIGN KEY ("currencyId") REFERENCES "currencies"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "offers" ADD CONSTRAINT "offers_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "offers" ADD CONSTRAINT "offers_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "offers" ADD CONSTRAINT "offers_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "offers" ADD CONSTRAINT "offers_supplierId_fkey" FOREIGN KEY ("supplierId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "conversations" ADD CONSTRAINT "conversations_offerId_fkey" FOREIGN KEY ("offerId") REFERENCES "offers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "conversations" ADD CONSTRAINT "conversations_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "conversations" ADD CONSTRAINT "conversations_offerId_fkey" FOREIGN KEY ("offerId") REFERENCES "offers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "conversation_participants" ADD CONSTRAINT "conversation_participants_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "messages" ADD CONSTRAINT "messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "messages" ADD CONSTRAINT "messages_conversationId_fkey" FOREIGN KEY ("conversationId") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "messages" ADD CONSTRAINT "messages_senderId_fkey" FOREIGN KEY ("senderId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "favorites" ADD CONSTRAINT "favorites_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "favorites" ADD CONSTRAINT "favorites_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "favorites" ADD CONSTRAINT "favorites_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "favorites" ADD CONSTRAINT "favorites_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "reports" ADD CONSTRAINT "reports_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-ALTER TABLE "reports" ADD CONSTRAINT "reports_reportedUserId_fkey" FOREIGN KEY ("reportedUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "reports" ADD CONSTRAINT "reports_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "reports" ADD CONSTRAINT "reports_reporterId_fkey" FOREIGN KEY ("reporterId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "reports" ADD CONSTRAINT "reports_reportedUserId_fkey" FOREIGN KEY ("reportedUserId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "reports" ADD CONSTRAINT "reports_requestId_fkey" FOREIGN KEY ("requestId") REFERENCES "requests"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "page_contents" ADD CONSTRAINT "page_contents_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "homepage_stats" ADD CONSTRAINT "homepage_stats_iconMediaId_fkey" FOREIGN KEY ("iconMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "homepage_stat_translations" ADD CONSTRAINT "homepage_stat_translations_statId_fkey" FOREIGN KEY ("statId") REFERENCES "homepage_stats"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "trust_badges" ADD CONSTRAINT "trust_badges_iconMediaId_fkey" FOREIGN KEY ("iconMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-ALTER TABLE "trust_badge_translations" ADD CONSTRAINT "trust_badge_translations_badgeId_fkey" FOREIGN KEY ("badgeId") REFERENCES "trust_badges"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "seo_settings" ADD CONSTRAINT "seo_settings_ogImageMediaId_fkey" FOREIGN KEY ("ogImageMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "page_contents" ADD CONSTRAINT "page_contents_mediaId_fkey" FOREIGN KEY ("mediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "homepage_stats" ADD CONSTRAINT "homepage_stats_iconMediaId_fkey" FOREIGN KEY ("iconMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "homepage_stat_translations" ADD CONSTRAINT "homepage_stat_translations_statId_fkey" FOREIGN KEY ("statId") REFERENCES "homepage_stats"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "trust_badges" ADD CONSTRAINT "trust_badges_iconMediaId_fkey" FOREIGN KEY ("iconMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "trust_badge_translations" ADD CONSTRAINT "trust_badge_translations_badgeId_fkey" FOREIGN KEY ("badgeId") REFERENCES "trust_badges"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "seo_settings" ADD CONSTRAINT "seo_settings_ogImageMediaId_fkey" FOREIGN KEY ("ogImageMediaId") REFERENCES "media"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "admin_audit_logs" ADD CONSTRAINT "admin_audit_logs_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "admin_audit_logs" ADD CONSTRAINT "admin_audit_logs_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
 
-ALTER TABLE "_RequestMedia" ADD CONSTRAINT "_RequestMedia_A_fkey" FOREIGN KEY ("A") REFERENCES "media"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "_RequestMedia" ADD CONSTRAINT "_RequestMedia_B_fkey" FOREIGN KEY ("B") REFERENCES "requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "_MessageMedia" ADD CONSTRAINT "_MessageMedia_A_fkey" FOREIGN KEY ("A") REFERENCES "media"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "_MessageMedia" ADD CONSTRAINT "_MessageMedia_B_fkey" FOREIGN KEY ("B") REFERENCES "messages"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "_RequestMedia" ADD CONSTRAINT "_RequestMedia_A_fkey" FOREIGN KEY ("A") REFERENCES "media"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "_RequestMedia" ADD CONSTRAINT "_RequestMedia_B_fkey" FOREIGN KEY ("B") REFERENCES "requests"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "_MessageMedia" ADD CONSTRAINT "_MessageMedia_A_fkey" FOREIGN KEY ("A") REFERENCES "media"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE "_MessageMedia" ADD CONSTRAINT "_MessageMedia_B_fkey" FOREIGN KEY ("B") REFERENCES "messages"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN null;
+END $$;
