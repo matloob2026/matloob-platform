@@ -12,12 +12,14 @@ import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
 import type { StaticPageListItem, NavPlacement } from "@/services/admin/static-page.service";
+import type { SeoFields } from "@/services/admin/seo.service";
 import {
   createStaticPageAction,
   updateStaticPageAction,
   setStaticPageActiveAction,
   deleteStaticPageAction,
 } from "./actions";
+import { getEntitySeoAction, saveEntitySeoAction } from "../seo/actions";
 
 const PAGE_SIZE = 20;
 
@@ -88,6 +90,13 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [formValues, setFormValues] = useState<FormValues>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | undefined>();
+  // Page-specific SEO (SeoSetting, entityType "static_page") — reuses
+  // the same SEO CMS actions as src/app/admin/(protected)/seo/actions.ts,
+  // no duplicate SEO system. Only loadable/savable for an EXISTING page
+  // (its slug is a stable id); a brand-new, unsaved page shows a note
+  // asking the admin to save the page first instead.
+  const [seoValues, setSeoValues] = useState<{ ar: SeoFields; en: SeoFields } | null>(null);
+  const [seoLoading, setSeoLoading] = useState(false);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -103,6 +112,7 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
     setEditingSlug(null);
     setFormValues(EMPTY_FORM);
     setFormError(undefined);
+    setSeoValues(null);
     setShowForm(true);
   }
 
@@ -110,7 +120,12 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
     setEditingSlug(item.slug);
     setFormValues(toFormValues(item));
     setFormError(undefined);
+    setSeoValues(null);
     setShowForm(true);
+    setSeoLoading(true);
+    getEntitySeoAction("static_page", item.slug)
+      .then((seo) => setSeoValues(seo))
+      .finally(() => setSeoLoading(false));
   }
 
   function closeForm() {
@@ -139,6 +154,18 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
       if (!result.success) {
         setFormError(result.error);
         return;
+      }
+
+      // SEO is only saved for a page that already existed before this
+      // save (its slug is a stable id to key SeoSetting rows on) — a
+      // brand-new page shows a note asking the admin to save the page
+      // first, then reopen it to set SEO. Renaming the slug while
+      // editing also isn't reflected in SeoSetting automatically; SEO
+      // stays keyed to the ORIGINAL slug in that edge case, same as
+      // how the rest of this form treats a slug change as a rename,
+      // not a new entity.
+      if (editingSlug && seoValues) {
+        await saveEntitySeoAction("static_page", editingSlug, seoValues);
       }
 
       showToast(editingSlug ? "تم تحديث الصفحة بنجاح." : "تم إضافة الصفحة بنجاح.", "success");
@@ -335,6 +362,70 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
                       }
                     />
                   </FormField>
+
+                  {/* Page-specific SEO (SeoSetting, entityType "static_page") —
+                      only available once the page has been saved at least
+                      once (its slug is the stable id SEO rows key on). */}
+                  {editingSlug ? (
+                    <div className="space-y-4 border-t border-border pt-4">
+                      <p className="text-sm font-bold text-navy-950">
+                        {locale === "ar" ? "SEO لهذه الصفحة (عربي)" : "SEO for this page (English)"}
+                      </p>
+                      {seoLoading || !seoValues ? (
+                        <p className="text-xs text-text-400">
+                          {locale === "ar" ? "جارٍ تحميل إعدادات SEO..." : "Loading SEO settings..."}
+                        </p>
+                      ) : (
+                        <>
+                          <FormField label={locale === "ar" ? "عنوان SEO" : "SEO title"}>
+                            <Input
+                              value={seoValues[locale].metaTitle}
+                              onChange={(e) =>
+                                setSeoValues((v) =>
+                                  v ? { ...v, [locale]: { ...v[locale], metaTitle: e.target.value } } : v
+                                )
+                              }
+                            />
+                          </FormField>
+                          <FormField label={locale === "ar" ? "وصف Meta" : "Meta description"}>
+                            <Textarea
+                              rows={2}
+                              value={seoValues[locale].metaDescription}
+                              onChange={(e) =>
+                                setSeoValues((v) =>
+                                  v ? { ...v, [locale]: { ...v[locale], metaDescription: e.target.value } } : v
+                                )
+                              }
+                            />
+                          </FormField>
+                          <FormField label={locale === "ar" ? "الرابط الأساسي (Canonical URL)" : "Canonical URL"}>
+                            <Input
+                              dir="ltr"
+                              value={seoValues[locale].canonicalUrl}
+                              onChange={(e) =>
+                                setSeoValues((v) =>
+                                  v ? { ...v, [locale]: { ...v[locale], canonicalUrl: e.target.value } } : v
+                                )
+                              }
+                            />
+                          </FormField>
+                          <Toggle
+                            checked={seoValues[locale].noIndex}
+                            onChange={(value) =>
+                              setSeoValues((v) => (v ? { ...v, [locale]: { ...v[locale], noIndex: value } } : v))
+                            }
+                            label={locale === "ar" ? "إخفاء عن محركات البحث (noindex)" : "Hide from search engines (noindex)"}
+                          />
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    locale === "ar" && (
+                      <p className="border-t border-border pt-4 text-xs text-text-400">
+                        احفظ الصفحة أولاً، ثم أعد فتحها لتعديل إعدادات SEO الخاصة بها.
+                      </p>
+                    )
+                  )}
                 </div>
               )}
             />

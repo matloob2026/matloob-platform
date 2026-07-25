@@ -53,6 +53,18 @@ export async function getPublicStaticPage(slug: string): Promise<PublicStaticPag
   };
 }
 
+/** Every currently active static page's slug — used by
+ * src/app/sitemap.ts (Part 3, Technical SEO) so newly published pages
+ * are picked up automatically and deactivated/deleted ones drop out,
+ * without hand-maintaining a separate sitemap list. */
+export async function getAllActiveStaticPageSlugs(): Promise<string[]> {
+  const rows = await prisma.pageContent.findMany({
+    where: { section: SECTION, locale: "ar", isPublished: true },
+    select: { page: true },
+  });
+  return rows.map((r: { page: string }) => r.page);
+}
+
 export interface PublicStaticPageNavLink {
   slug: string;
   title: string;

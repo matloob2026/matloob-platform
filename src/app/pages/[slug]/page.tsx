@@ -4,6 +4,8 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { PublicPageContent } from "@/components/marketing/PublicPageContent";
 import { PublicPageCta } from "@/components/marketing/PublicPageCta";
 import { getPublicStaticPage } from "@/lib/static-page-public-content";
+import { getPublicSiteContact } from "@/lib/site-settings-public";
+import { resolveSeo, toMetadata } from "@/lib/seo";
 
 /**
  * Public Static Pages route — Checkpoint 03, given a single unified
@@ -33,6 +35,15 @@ import { getPublicStaticPage } from "@/lib/static-page-public-content";
  * `getPublicStaticPage` returns `null` for either case, so a visitor
  * can never tell the difference between "never existed" and
  * "temporarily unpublished".
+ *
+ * SETTINGS/SEO CMS task: `generateMetadata` now resolves through the
+ * one shared strategy (src/lib/seo.ts) — page-specific SEO
+ * (`SeoSetting(entityType: "static_page", entityId: slug)`, editable
+ * from this page's own Admin form — see StaticPagesManager.tsx) →
+ * global SEO defaults → this page's own real title/lead as a safe
+ * fallback. The "contact" slug additionally renders a small, live
+ * contact-details block sourced from Admin → Settings → التواصل (see
+ * getPublicSiteContact) — every other slug is unaffected.
  */
 
 const DEFAULT_LOCALE: "ar" | "en" = "ar";
@@ -65,7 +76,12 @@ export async function generateMetadata({
     return { title: "الصفحة غير موجودة | مطلوب" };
   }
   const title = DEFAULT_LOCALE === "ar" ? page.titleAr : page.titleEn;
-  return { title: `${title} | مطلوب` };
+  const content = DEFAULT_LOCALE === "ar" ? page.contentAr : page.contentEn;
+  const resolved = await resolveSeo("static_page", slug, DEFAULT_LOCALE, {
+    title: `${title} | مطلوب`,
+    description: deriveLead(content) ?? title,
+  });
+  return toMetadata(resolved);
 }
 
 export default async function StaticPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -79,6 +95,14 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   const title = DEFAULT_LOCALE === "ar" ? page.titleAr : page.titleEn;
   const content = DEFAULT_LOCALE === "ar" ? page.contentAr : page.contentEn;
   const lead = deriveLead(content);
+  // SETTINGS CMS task: the "Contact" page additionally shows a small,
+  // live contact-details block sourced from Admin → Settings →
+  // التواصل, so an admin can update the platform's contact info in one
+  // place without editing this page's CMS content by hand. Any other
+  // slug just skips this — no visual change elsewhere.
+  const contact = slug === "contact" ? await getPublicSiteContact() : null;
+  const hasContactDetails =
+    contact && (contact.contactEmail || contact.supportEmail || contact.contactPhone || contact.whatsappNumber || contact.address);
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted pb-16">
@@ -102,6 +126,54 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
       <section className="px-4 pt-8 sm:pt-10">
         <div className="mx-auto max-w-3xl rounded-card bg-white p-6 shadow-card sm:p-10">
           <PublicPageContent text={content} />
+
+          {hasContactDetails && contact && (
+            <div className="mt-8 grid gap-3 border-t border-border pt-6 text-sm text-text-700 sm:grid-cols-2">
+              {contact.contactEmail && (
+                <p>
+                  <span className="font-bold text-navy-950">البريد الإلكتروني: </span>
+                  <a href={`mailto:${contact.contactEmail}`} className="text-teal-600 hover:underline" dir="ltr">
+                    {contact.contactEmail}
+                  </a>
+                </p>
+              )}
+              {contact.supportEmail && (
+                <p>
+                  <span className="font-bold text-navy-950">بريد الدعم الفني: </span>
+                  <a href={`mailto:${contact.supportEmail}`} className="text-teal-600 hover:underline" dir="ltr">
+                    {contact.supportEmail}
+                  </a>
+                </p>
+              )}
+              {contact.contactPhone && (
+                <p>
+                  <span className="font-bold text-navy-950">الهاتف: </span>
+                  <a href={`tel:${contact.contactPhone}`} className="text-teal-600 hover:underline" dir="ltr">
+                    {contact.contactPhone}
+                  </a>
+                </p>
+              )}
+              {contact.whatsappNumber && (
+                <p>
+                  <span className="font-bold text-navy-950">واتساب: </span>
+                  <a
+                    href={`https://wa.me/${contact.whatsappNumber.replace(/[^0-9]/g, "")}`}
+                    className="text-teal-600 hover:underline"
+                    dir="ltr"
+                  >
+                    {contact.whatsappNumber}
+                  </a>
+                </p>
+              )}
+              {contact.address && (
+                <p className="sm:col-span-2">
+                  <span className="font-bold text-navy-950">العنوان: </span>
+                  {contact.address}
+                </p>
+              )}
+            </div>
+          )}
+
           <PublicPageCta />
         </div>
       </section>

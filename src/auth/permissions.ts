@@ -73,6 +73,20 @@ export const LOCALIZATION_MANAGE_PERMISSION = "localization:manage";
  */
 export const CURRENCY_MANAGE_PERMISSION = "currencies:manage";
 
+/**
+ * Global Site Settings CMS: write actions require
+ * `settings:manage` — `settings:view` (already ADMIN only since
+ * Checkpoint 01) continues to gate the sidebar link and read access.
+ */
+export const SETTINGS_MANAGE_PERMISSION = "settings:manage";
+
+/**
+ * SEO CMS: write actions require `seo:manage` — `seo:view` (already
+ * ADMIN only since Checkpoint 01) continues to gate the sidebar link
+ * and read access.
+ */
+export const SEO_MANAGE_PERMISSION = "seo:manage";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);

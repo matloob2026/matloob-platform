@@ -141,6 +141,7 @@ export function renderHomepageHtml(
     footerStaticPageNavLinks: PublicStaticPageNavLink[];
     mainNavStaticPageLinks: PublicStaticPageNavLink[];
     activeKnownPageSlugs: ReadonlySet<string>;
+    social: { x: string | null; instagram: string | null };
   }
 ): string {
   let html = bodyHtml;
@@ -223,6 +224,19 @@ export function renderHomepageHtml(
 
   if (content.activeKnownPageSlugs.size > 0) {
     html = fixKnownPlaceholderLinks(html, content.activeKnownPageSlugs);
+  }
+
+  if (content.social.x) {
+    html = html.replace(
+      /<!--CMS:SOCIAL_X_START-->[\s\S]*?<!--CMS:SOCIAL_X_END-->/,
+      (match) => match.replace('href="#"', `href="${escapeHtml(content.social.x!)}"`)
+    );
+  }
+  if (content.social.instagram) {
+    html = html.replace(
+      /<!--CMS:SOCIAL_INSTAGRAM_START-->[\s\S]*?<!--CMS:SOCIAL_INSTAGRAM_END-->/,
+      (match) => match.replace('href="#"', `href="${escapeHtml(content.social.instagram!)}"`)
+    );
   }
 
   return html;

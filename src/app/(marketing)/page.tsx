@@ -14,12 +14,33 @@ import {
   getPublicStaticPageMainNavLinks,
   getActiveKnownPageSlugs,
 } from "@/lib/static-page-public-content";
+import {
+  getPublicSiteBrand,
+  getPublicSiteSocial,
+  getPublicMaintenanceMode,
+} from "@/lib/site-settings-public";
+import { resolveSeo, toMetadata } from "@/lib/seo";
 import { renderHomepageHtml } from "./homepage-render";
 
-export const metadata: Metadata = {
-  title: "مطلوب | قولنا إيه اللي محتاجه",
-  description: "منصة الطلبات الأولى في المملكة — بدل ما تدور... اطلبها وبكل سهولة تجيلك!",
-};
+const FALLBACK_TITLE = "مطلوب | قولنا إيه اللي محتاجه";
+const FALLBACK_DESCRIPTION = "منصة الطلبات الأولى في المملكة — بدل ما تدور... اطلبها وبكل سهولة تجيلك!";
+
+/**
+ * SEO/Settings CMS task: the homepage's `<title>`/meta description now
+ * go through the one shared resolution strategy (src/lib/seo.ts) —
+ * page-specific SEO (`SeoSetting(entityType: "homepage")`) → global
+ * SEO defaults (`SeoSetting(entityType: "global")`) → this file's own
+ * hardcoded fallback, so nothing ever renders blank. See
+ * src/app/pages/[slug]/page.tsx for the same strategy applied to
+ * Static Pages.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const resolved = await resolveSeo("homepage", null, "ar", {
+    title: FALLBACK_TITLE,
+    description: FALLBACK_DESCRIPTION,
+  });
+  return toMetadata(resolved);
+}
 
 /**
  * This page renders the EXACT markup from the locked homepage design
@@ -67,9 +88,9 @@ export const metadata: Metadata = {
  * appear in both, either, or neither location while still being
  * reachable at its direct `/pages/[slug]` URL.
  *
- * CMS Checkpoint 06 (final task): every remaining hardcoded
- * placeholder link on the homepage that corresponds to a real
- * page-like destination (تواصل معنا / كيف يعمل مطلوب / من نحن /
+ * CMS Checkpoint 06 (final Static Pages task): every remaining
+ * hardcoded placeholder link on the homepage that corresponds to a
+ * real page-like destination (تواصل معنا / كيف يعمل مطلوب / من نحن /
  * الشروط والأحكام / سياسة الخصوصية / الأسئلة الشائعة / مركز المساعدة)
  * gets its `href` pointed at the real Static Page once it's created
  * and published (see `getActiveKnownPageSlugs` and
@@ -77,18 +98,44 @@ export const metadata: Metadata = {
  * position stay exactly as designed. "المدونة" (Blog) is deliberately
  * left as a placeholder — it's a separate, not-yet-built system.
  *
+ * SETTINGS/SEO CMS task: the homepage's `<title>`/description come
+ * from `generateMetadata` above; the footer's X/Instagram icons get
+ * real hrefs once configured in Admin → Settings → روابط التواصل
+ * الاجتماعي (see CMS:SOCIAL_X_START/SOCIAL_INSTAGRAM_START markers in
+ * homepage-body.html and ./homepage-render.ts) — untouched (still
+ * `href="#"`) until an admin sets one; and a maintenance-mode switch
+ * (Admin → Settings → إعدادات الموقع) replaces the whole homepage with
+ * a minimal, on-brand notice when enabled, instead of erroring or
+ * showing a half-broken page. `/admin` itself is never gated by this
+ * — only this public route.
+ *
  * When Phase 3+ rebuilds this as real React components (per the
  * src/components/hero, src/components/requests folders reserved in
  * Phase 1), this file is what gets replaced — nothing else in the app
  * depends on its internals.
  */
 export default async function HomePage() {
+  const maintenanceMode = await getPublicMaintenanceMode();
+  if (maintenanceMode) {
+    const brand = await getPublicSiteBrand();
+    return (
+      <main dir="rtl" className="flex min-h-screen items-center justify-center bg-surface-muted px-4">
+        <div className="max-w-md rounded-card bg-white p-10 text-center shadow-card">
+          <h1 className="font-display text-2xl font-extrabold text-navy-950">{brand.siteName}</h1>
+          <p className="mt-4 text-sm leading-relaxed text-text-500">
+            الموقع تحت الصيانة حالياً، وسنعود قريباً بإذن الله. نعتذر عن أي إزعاج.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   const rawHtml = fs.readFileSync(
     path.join(process.cwd(), "src/content/marketing/homepage-body.html"),
     "utf-8"
   );
 
-  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs] =
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social] =
     await Promise.all([
       getPublicHomepageMainContent(),
       getPublicHomepageStats(),
@@ -96,6 +143,7 @@ export default async function HomePage() {
       getPublicStaticPageFooterNavLinks(),
       getPublicStaticPageMainNavLinks(),
       getActiveKnownPageSlugs(),
+      getPublicSiteSocial(),
     ]);
 
   const bodyHtml = renderHomepageHtml(rawHtml, {
@@ -105,6 +153,7 @@ export default async function HomePage() {
     footerStaticPageNavLinks,
     mainNavStaticPageLinks,
     activeKnownPageSlugs,
+    social,
   });
 
   return (
