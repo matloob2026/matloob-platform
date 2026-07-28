@@ -87,6 +87,15 @@ export const SETTINGS_MANAGE_PERMISSION = "settings:manage";
  */
 export const SEO_MANAGE_PERMISSION = "seo:manage";
 
+/**
+ * Media Library: write actions (upload/replace/delete) require
+ * `media:manage` — ADMIN only, via the "*" wildcard. `media:view`
+ * stays granted to MODERATOR too (unchanged since Checkpoint 01) —
+ * MODERATOR can browse the library read-only but cannot upload,
+ * replace, or delete anything.
+ */
+export const MEDIA_MANAGE_PERMISSION = "media:manage";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);
