@@ -168,12 +168,33 @@ export function renderHomepageHtml(
       /<!--CMS:CTA_START-->[\s\S]*?<!--CMS:CTA_END-->/,
       `<!--CMS:CTA_START-->${ctaHtml}<!--CMS:CTA_END-->`
     );
+
+    // Hero collage — each of the 9 float-card slots keeps its original
+    // stock photo untouched unless the admin picked a replacement for
+    // that specific slot (see HERO_IMAGE_SLOTS in
+    // homepage-content.service.ts and the CMS:HERO_IMG_<slot> markers
+    // in homepage-body.html).
+    for (const [slot, url] of Object.entries(content.main.heroImages)) {
+      if (!url) continue;
+      const startMarker = `<!--CMS:HERO_IMG_${slot}_START-->`;
+      const endMarker = `<!--CMS:HERO_IMG_${slot}_END-->`;
+      const pattern = new RegExp(
+        `${startMarker}<img src="[^"]*"([^>]*)>${endMarker}`
+      );
+      html = html.replace(pattern, (_match, restOfTag: string) => {
+        // Keeps the original `alt="..."` (and any other attributes)
+        // untouched — only the `src` changes.
+        return `${startMarker}<img src="${escapeHtml(url)}"${restOfTag}>${endMarker}`;
+      });
+    }
   }
 
   if (content.stats.length > 0) {
     const statsHtml = content.stats
       .map((stat) => {
-        const icon = STAT_ICONS[stat.label] ?? STAT_ICON_FALLBACK;
+        const icon = stat.iconUrl
+          ? `<img src="${escapeHtml(stat.iconUrl)}" alt="" width="20" height="20" style="object-fit:cover;border-radius:6px" />`
+          : STAT_ICONS[stat.label] ?? STAT_ICON_FALLBACK;
         return (
           `<div class="stat"><span class="stat-icon">${icon}</span>` +
           `<div><div class="stat-num" data-count="${stat.value}">0</div>` +
@@ -187,7 +208,9 @@ export function renderHomepageHtml(
   if (content.trustBadges.length > 0) {
     const trustHtml = content.trustBadges
       .map((badge) => {
-        const icon = TRUST_BADGE_ICONS[badge.label] ?? TRUST_BADGE_ICON_FALLBACK;
+        const icon = badge.iconUrl
+          ? `<img src="${escapeHtml(badge.iconUrl)}" alt="" width="16" height="16" style="object-fit:cover;border-radius:4px" />`
+          : TRUST_BADGE_ICONS[badge.label] ?? TRUST_BADGE_ICON_FALLBACK;
         return `<span class="trust-badge">${icon} ${escapeHtml(badge.label)}</span>`;
       })
       .join("");

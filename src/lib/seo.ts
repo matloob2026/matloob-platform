@@ -12,9 +12,10 @@
  *      "fallback" is never empty even if nothing was ever configured
  *      in the CMS)
  * The same three-tier order applies to Open Graph metadata too, which
- * reuses `metaTitle`/`metaDescription` — see
- * src/services/admin/seo.service.ts's docstring for why there's no
- * separate OG-specific column in the schema.
+ * reuses `metaTitle`/`metaDescription` for title/description and
+ * resolves `ogImageMediaId` (via the Media Library) for the image —
+ * see src/services/admin/seo.service.ts's docstring for the full
+ * field-scope rationale.
  *
  * Read-only, no auth — mirrors src/lib/homepage-public-content.ts /
  * src/lib/static-page-public-content.ts's convention of a thin public
@@ -33,6 +34,9 @@ export interface ResolvedSeo {
   keywords: string[];
   canonicalUrl: string | null;
   noIndex: boolean;
+  /** Media Library integration — resolved from `SeoSetting.ogImageMediaId`
+   * via the same 3-tier order (page-specific → global → none). */
+  ogImageUrl: string | null;
 }
 
 interface SeoSettingRow {
@@ -40,6 +44,7 @@ interface SeoSettingRow {
   metaDescription: string | null;
   canonicalUrl: string | null;
   noIndex: boolean;
+  ogImage: { url: string } | null;
 }
 
 /**
@@ -78,6 +83,7 @@ async function readSeoRow(
         locale,
       },
     },
+    include: { ogImage: { select: { url: true } } },
   });
 }
 
@@ -116,6 +122,7 @@ export async function resolveSeo(
     keywords,
     canonicalUrl: specific?.canonicalUrl || global?.canonicalUrl || null,
     noIndex: specific?.noIndex ?? global?.noIndex ?? false,
+    ogImageUrl: specific?.ogImage?.url || global?.ogImage?.url || null,
   };
 }
 
@@ -135,11 +142,13 @@ export function toMetadata(resolved: ResolvedSeo): Metadata {
       description: resolved.description,
       type: "website",
       locale: "ar_SA",
+      images: resolved.ogImageUrl ? [{ url: resolved.ogImageUrl }] : undefined,
     },
     twitter: {
-      card: "summary_large_image",
+      card: resolved.ogImageUrl ? "summary_large_image" : "summary",
       title: resolved.title,
       description: resolved.description,
+      images: resolved.ogImageUrl ? [resolved.ogImageUrl] : undefined,
     },
   };
 }

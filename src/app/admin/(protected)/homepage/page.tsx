@@ -18,7 +18,12 @@ import {
   type MockCtaContent,
   type MockFooterContent,
 } from "@/services/mock/homepage-content.mock";
-import type { HomepageMainContentItem, HomepageStatListItem, TrustBadgeListItem } from "@/services/homepage-content.service";
+import type {
+  HomepageMainContentItem,
+  HomepageStatListItem,
+  TrustBadgeListItem,
+  HeroImageSlot,
+} from "@/services/homepage-content.service";
 import {
   getHomepageMainContentAction,
   listHomepageStatsAction,
@@ -57,6 +62,23 @@ function LogoSection() {
   );
 }
 
+/** Mirrors HERO_IMAGE_SLOTS in src/services/homepage-content.service.ts
+ * exactly (kept as a local literal, not imported, since that service
+ * file is server-only and can't be bundled into this client
+ * component) — labels match the collage's original stock-photo alt
+ * text in src/content/marketing/homepage-body.html. */
+const HERO_IMAGE_SLOT_LABELS: { slot: HeroImageSlot; label: string }[] = [
+  { slot: "sc-villa", label: "عقارات" },
+  { slot: "sc-phone", label: "جوالات" },
+  { slot: "sc-laptop", label: "أجهزة" },
+  { slot: "sc-interior", label: "أثاث منزلي (١)" },
+  { slot: "sc-sofa", label: "أثاث منزلي (٢)" },
+  { slot: "sc-car", label: "سيارات" },
+  { slot: "sc-tech", label: "خدمات" },
+  { slot: "sc-dog", label: "حيوانات أليفة" },
+  { slot: "sc-travel", label: "سفر وسياحة" },
+];
+
 const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
   headingAr: "",
   headingEn: "",
@@ -65,7 +87,17 @@ const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
   ctaLabelAr: "",
   ctaLabelEn: "",
   ctaUrl: "",
-  heroMedia: null,
+  heroImages: {
+    "sc-villa": null,
+    "sc-phone": null,
+    "sc-laptop": null,
+    "sc-interior": null,
+    "sc-sofa": null,
+    "sc-car": null,
+    "sc-tech": null,
+    "sc-dog": null,
+    "sc-travel": null,
+  },
 };
 
 /**
@@ -74,9 +106,11 @@ const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
  * Reuses the existing PageContent(section: "hero") model — see
  * src/services/homepage-content.service.ts's HomepageAdminContentService.
  *
- * Hero IMAGES (the float-card collage) and the rest of the Hero tab's
- * historical scope stay out of this checkpoint — only these text/CTA
- * fields are wired to the database here.
+ * Hero IMAGES (the float-card collage) are also real and
+ * database-backed now — each of the 9 collage slots picks an existing
+ * Media Library image via `<MediaPicker>`, stored in
+ * `PageContent(hero,ar).extra` (see `HERO_IMAGE_SLOTS` in
+ * homepage-content.service.ts) — no schema change.
  */
 function HeroSection({ initialContent }: { initialContent: HomepageMainContentItem | null }) {
   const router = useRouter();
@@ -96,7 +130,17 @@ function HeroSection({ initialContent }: { initialContent: HomepageMainContentIt
       ctaLabelAr: values.ctaLabelAr,
       ctaLabelEn: values.ctaLabelEn,
       ctaUrl: values.ctaUrl,
-      heroMediaId: values.heroMedia?.id ?? null,
+      heroImages: {
+        "sc-villa": values.heroImages["sc-villa"]?.id ?? null,
+        "sc-phone": values.heroImages["sc-phone"]?.id ?? null,
+        "sc-laptop": values.heroImages["sc-laptop"]?.id ?? null,
+        "sc-interior": values.heroImages["sc-interior"]?.id ?? null,
+        "sc-sofa": values.heroImages["sc-sofa"]?.id ?? null,
+        "sc-car": values.heroImages["sc-car"]?.id ?? null,
+        "sc-tech": values.heroImages["sc-tech"]?.id ?? null,
+        "sc-dog": values.heroImages["sc-dog"]?.id ?? null,
+        "sc-travel": values.heroImages["sc-travel"]?.id ?? null,
+      },
     });
     setIsSaving(false);
 
@@ -170,28 +214,24 @@ function HeroSection({ initialContent }: { initialContent: HomepageMainContentIt
           />
         </FormField>
 
-        <FormField label="الصورة الرئيسية للقسم (اختياري)">
-          <MediaPicker
-            value={values.heroMedia}
-            onChange={(media) => setValues((v) => ({ ...v, heroMedia: media }))}
-          />
-        </FormField>
-
         <div>
           <p className="mb-2 text-sm font-semibold text-text-700">صور الهيرو (Hero Images)</p>
-          <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border-strong bg-surface-muted text-text-400"
-              >
-                <ImagePlus className="h-5 w-5" />
-              </div>
+          <p className="mb-3 text-xs text-text-400">
+            الصور التي تظهر حول القسم الرئيسي — اختر صورة من مكتبة الوسائط لأي بطاقة، أو اتركها لتبقى الصورة
+            الافتراضية الحالية.
+          </p>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {HERO_IMAGE_SLOT_LABELS.map(({ slot, label }) => (
+              <FormField key={slot} label={label}>
+                <MediaPicker
+                  value={values.heroImages[slot]}
+                  onChange={(media) =>
+                    setValues((v) => ({ ...v, heroImages: { ...v.heroImages, [slot]: media } }))
+                  }
+                />
+              </FormField>
             ))}
           </div>
-          <p className="mt-2 text-xs text-text-400">
-            8 صور تظهر حول القسم الرئيسي (عقارات، سيارات، جوالات...) — إدارتها ستكون متاحة في نقطة تحقق لاحقة.
-          </p>
         </div>
       </div>
 

@@ -24,6 +24,9 @@ export interface PublicStaticPage {
   titleEn: string;
   contentAr: string;
   contentEn: string;
+  /** Real, admin-selected featured image (via the Media Library) —
+   * null when unset. */
+  featuredImageUrl: string | null;
 }
 
 /** Returns the page only if its Arabic row exists, is active, and has
@@ -36,7 +39,10 @@ export interface PublicStaticPage {
  * Arabic row, or missing Arabic heading/body) so the caller can render
  * a single, safe not-found response. */
 export async function getPublicStaticPage(slug: string): Promise<PublicStaticPage | null> {
-  const rows = await prisma.pageContent.findMany({ where: { page: slug, section: SECTION } });
+  const rows = await prisma.pageContent.findMany({
+    where: { page: slug, section: SECTION },
+    include: { media: { select: { url: true } } },
+  });
   if (rows.length === 0) return null;
 
   const ar = rows.find((r: { locale: string }) => r.locale === "ar");
@@ -50,6 +56,7 @@ export async function getPublicStaticPage(slug: string): Promise<PublicStaticPag
     titleEn: en?.heading ?? ar.heading,
     contentAr: ar.body,
     contentEn: en?.body ?? ar.body,
+    featuredImageUrl: ar.media?.url ?? en?.media?.url ?? null,
   };
 }
 

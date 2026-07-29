@@ -148,6 +148,24 @@ function warnAuditSkipped(action: string, entityId: string, actorId: string): vo
 // 1. Homepage Main Content (PageContent: page="homepage", section="hero")
 // ---------------------------------------------------------------------
 
+/** The 9 real `<img>` slots in the hero's float-card collage — see the
+ * `CMS:HERO_IMG_<slot>_START/END` markers in
+ * src/content/marketing/homepage-body.html. These CSS class names
+ * (`sc-villa`, etc.) are the collage's existing, stable slot
+ * identifiers; nothing new is invented here. */
+export const HERO_IMAGE_SLOTS = [
+  "sc-villa",
+  "sc-phone",
+  "sc-laptop",
+  "sc-interior",
+  "sc-sofa",
+  "sc-car",
+  "sc-tech",
+  "sc-dog",
+  "sc-travel",
+] as const;
+export type HeroImageSlot = (typeof HERO_IMAGE_SLOTS)[number];
+
 export interface HomepageMainContentItem {
   headingAr: string;
   headingEn: string;
@@ -160,10 +178,14 @@ export interface HomepageMainContentItem {
    * the schema stores it per-locale, but this checkpoint exposes one
    * field and mirrors it onto both locale rows on save). */
   ctaUrl: string;
-  /** Media Library integration — reuses `PageContent.mediaId` (already
-   * in the schema), mirrored onto both locale rows the same way
-   * `ctaUrl` already is. */
-  heroMedia: { id: string; url: string } | null;
+  /** Media Library integration — one existing `Media` row per collage
+   * slot, chosen via `<MediaPicker>`. Stored in
+   * `PageContent(hero,ar).extra` (already in the schema as free-form
+   * Json — reused here exactly like Static Pages already reuse it for
+   * `navPlacement`/`navOrder`; no schema change). A slot with no
+   * selection is `null` — the public renderer then keeps that slot's
+   * original stock photo untouched (see homepage-render.ts). */
+  heroImages: Record<HeroImageSlot, { id: string; url: string } | null>;
 }
 
 export interface HomepageMainContentInput {
@@ -174,8 +196,33 @@ export interface HomepageMainContentInput {
   ctaLabelAr: string;
   ctaLabelEn: string;
   ctaUrl: string;
-  /** Existing `Media` row id, chosen via `<MediaPicker>`. `null` clears it. */
-  heroMediaId?: string | null;
+  /** Existing `Media` row ids per collage slot, chosen via
+   * `<MediaPicker>`. A slot omitted or set to `null` clears/keeps that
+   * slot's original stock photo. */
+  heroImages?: Partial<Record<HeroImageSlot, string | null>>;
+}
+
+function emptyHeroImages(): Record<HeroImageSlot, { id: string; url: string } | null> {
+  const result = {} as Record<HeroImageSlot, { id: string; url: string } | null>;
+  for (const slot of HERO_IMAGE_SLOTS) result[slot] = null;
+  return result;
+}
+
+/** Parses `{ heroImages: { [slot]: mediaId } }` back out of
+ * `PageContent.extra` — unknown/missing/malformed values are simply
+ * treated as "no image for that slot" rather than erroring, the same
+ * tolerant-parsing convention already used for Static Pages'
+ * `navPlacement`/`navOrder` in extra. */
+function parseHeroImageIds(extra: unknown): Partial<Record<HeroImageSlot, string>> {
+  if (!extra || typeof extra !== "object" || Array.isArray(extra)) return {};
+  const heroImages = (extra as Record<string, unknown>).heroImages;
+  if (!heroImages || typeof heroImages !== "object" || Array.isArray(heroImages)) return {};
+  const result: Partial<Record<HeroImageSlot, string>> = {};
+  for (const slot of HERO_IMAGE_SLOTS) {
+    const value = (heroImages as Record<string, unknown>)[slot];
+    if (typeof value === "string" && value) result[slot] = value;
+  }
+  return result;
 }
 
 interface PageContentRow {
@@ -184,6 +231,7 @@ interface PageContentRow {
   ctaLabel: string | null;
   ctaUrl: string | null;
   mediaId: string | null;
+  extra: unknown;
   locale: string;
   media?: { id: string; url: string } | null;
 }
@@ -377,12 +425,28 @@ export class HomepageAdminContentService {
   async getMainContent(): Promise<HomepageMainContentItem | null> {
     const rows = await prisma.pageContent.findMany({
       where: { page: "homepage", section: "hero", locale: { in: [...HOMEPAGE_LOCALES] } },
-      include: { media: { select: { id: true, url: true } } },
     });
     if (rows.length === 0) return null;
 
     const ar = rows.find((r: PageContentRow) => r.locale === "ar");
     const en = rows.find((r: PageContentRow) => r.locale === "en");
+
+    const slotMediaIds = parseHeroImageIds(ar?.extra ?? en?.extra);
+    const idsToResolve = Object.values(slotMediaIds).filter((id): id is string => Boolean(id));
+    const mediaRows =
+      idsToResolve.length > 0
+        ? await prisma.media.findMany({ where: { id: { in: idsToResolve } }, select: { id: true, url: true } })
+        : [];
+    const mediaById = new Map<string, { id: string; url: string }>(
+      mediaRows.map((m: { id: string; url: string }) => [m.id, m])
+    );
+
+    const heroImages = emptyHeroImages();
+    for (const slot of HERO_IMAGE_SLOTS) {
+      const mediaId = slotMediaIds[slot];
+      if (mediaId) heroImages[slot] = mediaById.get(mediaId) ?? null;
+    }
+
     return {
       headingAr: ar?.heading ?? "",
       headingEn: en?.heading ?? "",
@@ -391,7 +455,7 @@ export class HomepageAdminContentService {
       ctaLabelAr: ar?.ctaLabel ?? "",
       ctaLabelEn: en?.ctaLabel ?? "",
       ctaUrl: ar?.ctaUrl ?? en?.ctaUrl ?? "",
-      heroMedia: ar?.media ?? en?.media ?? null,
+      heroImages,
     };
   }
 
@@ -402,6 +466,20 @@ export class HomepageAdminContentService {
       where: { page: "homepage", section: "hero", locale: { in: [...HOMEPAGE_LOCALES] } },
     });
     const hasRealActor = await actorExists(actorId);
+
+    // Merge onto whatever slots were already saved so a partial update
+    // (e.g. only re-saving text fields, or picking one new slot image)
+    // never clears the other 8 slots' selections.
+    const beforeAr = before.find((r: PageContentRow) => r.locale === "ar");
+    const beforeEn = before.find((r: PageContentRow) => r.locale === "en");
+    const existingSlotIds = parseHeroImageIds(beforeAr?.extra ?? beforeEn?.extra);
+    const mergedSlotIds: Partial<Record<HeroImageSlot, string | null>> = { ...existingSlotIds };
+    if (input.heroImages) {
+      for (const slot of HERO_IMAGE_SLOTS) {
+        if (slot in input.heroImages) mergedSlotIds[slot] = input.heroImages[slot] ?? null;
+      }
+    }
+    const heroImagesExtra = { heroImages: mergedSlotIds };
 
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.pageContent.upsert({
@@ -414,14 +492,14 @@ export class HomepageAdminContentService {
           body: input.bodyAr,
           ctaLabel: input.ctaLabelAr,
           ctaUrl: input.ctaUrl,
-          mediaId: input.heroMediaId ?? null,
+          extra: heroImagesExtra,
         },
         update: {
           heading: input.headingAr,
           body: input.bodyAr,
           ctaLabel: input.ctaLabelAr,
           ctaUrl: input.ctaUrl,
-          mediaId: input.heroMediaId ?? null,
+          extra: heroImagesExtra,
         },
       });
 
@@ -435,14 +513,14 @@ export class HomepageAdminContentService {
           body: input.bodyEn,
           ctaLabel: input.ctaLabelEn,
           ctaUrl: input.ctaUrl,
-          mediaId: input.heroMediaId ?? null,
+          extra: heroImagesExtra,
         },
         update: {
           heading: input.headingEn,
           body: input.bodyEn,
           ctaLabel: input.ctaLabelEn,
           ctaUrl: input.ctaUrl,
-          mediaId: input.heroMediaId ?? null,
+          extra: heroImagesExtra,
         },
       });
 

@@ -125,6 +125,14 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
 
       <section className="px-4 pt-8 sm:pt-10">
         <div className="mx-auto max-w-3xl rounded-card bg-white p-6 shadow-card sm:p-10">
+          {page.featuredImageUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={page.featuredImageUrl}
+              alt={title}
+              className="mb-6 max-h-80 w-full rounded-lg object-cover"
+            />
+          )}
           <PublicPageContent text={content} />
 
           {hasContactDetails && contact && (
