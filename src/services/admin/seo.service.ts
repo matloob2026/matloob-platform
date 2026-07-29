@@ -11,19 +11,22 @@
  * `normalizeEntityId` below for the one storage-level detail this
  * implies. No new model, no migration.
  *
- * FIELD SCOPE (why some requested fields aren't here): the schema has
- * no separate Open Graph title/description columns, no keywords
- * column, and `ogImageMediaId` is a foreign key into `Media` (Media
- * Library is explicitly out of this task's scope). Rather than
- * changing the schema, this service:
+ * FIELD SCOPE (why some requested fields still aren't here): the
+ * schema has no separate Open Graph title/description columns and no
+ * keywords column. Rather than changing the schema, this service:
  *   - reuses `metaTitle`/`metaDescription` as the Open Graph title/
  *     description too (a standard, well-established SEO fallback
- *     pattern — see src/lib/seo.ts's `resolveSeoMetadata`), and
- *   - leaves keywords and OG/Twitter images out of THIS model (a
- *     global default keyword list is instead handled by
- *     SiteSettingsAdminService's generic `SiteSetting` store, since
- *     keywords are inherently a single global, not per-entity, value
- *     for this platform's current pages).
+ *     pattern — see src/lib/seo.ts's `resolveSeoMetadata`),
+ *   - reuses `ogImageMediaId` (a `Media` foreign key already in the
+ *     schema) as the Open Graph AND Twitter/X card image, resolved via
+ *     the Media Library integration (`<MediaPicker>` — see
+ *     `SeoFields.ogImage` below; previously left unwired before the
+ *     Media Library existed to pick from), and
+ *   - leaves keywords out of THIS model (a global default keyword
+ *     list is instead handled by SiteSettingsAdminService's generic
+ *     `SiteSetting` store, since keywords are inherently a single
+ *     global, not per-entity, value for this platform's current
+ *     pages).
  * This keeps the schema untouched while still satisfying every field
  * this task marks "if supported"/"where supported".
  *
@@ -44,11 +47,18 @@ export interface SeoFields {
   metaDescription: string;
   canonicalUrl: string;
   noIndex: boolean;
+  /** Media Library integration — reuses `SeoSetting.ogImageMediaId`
+   * (already in the schema; previously left unwired because no Media
+   * Library existed to pick from — see the file docstring's original
+   * "FIELD SCOPE" note). Also doubles as the Twitter/X card image per
+   * the same Open-Graph-as-Twitter-fallback convention already used
+   * for metaTitle/metaDescription. */
+  ogImage: { id: string; url: string } | null;
 }
 
-export type UpdateSeoFields = Partial<SeoFields>;
+export type UpdateSeoFields = Partial<Omit<SeoFields, "ogImage">> & { ogImageMediaId?: string | null };
 
-const EMPTY_SEO: SeoFields = { metaTitle: "", metaDescription: "", canonicalUrl: "", noIndex: false };
+const EMPTY_SEO: SeoFields = { metaTitle: "", metaDescription: "", canonicalUrl: "", noIndex: false, ogImage: null };
 
 /** Flat, JSON-safe shape for the audit log — a plain
  * `{ar: SeoFields, en: SeoFields}` interface has no string index
@@ -115,6 +125,7 @@ export class SeoAdminService {
   async getSeo(entityType: string, entityId: string | null): Promise<{ ar: SeoFields; en: SeoFields }> {
     const rows = await prisma.seoSetting.findMany({
       where: { entityType, entityId: normalizeEntityId(entityId) },
+      include: { ogImage: { select: { id: true, url: true } } },
     });
     const ar = rows.find((r: { locale: string }) => r.locale === "ar");
     const en = rows.find((r: { locale: string }) => r.locale === "en");
@@ -125,6 +136,7 @@ export class SeoAdminService {
             metaDescription: ar.metaDescription ?? "",
             canonicalUrl: ar.canonicalUrl ?? "",
             noIndex: ar.noIndex,
+            ogImage: ar.ogImage,
           }
         : { ...EMPTY_SEO },
       en: en
@@ -133,6 +145,7 @@ export class SeoAdminService {
             metaDescription: en.metaDescription ?? "",
             canonicalUrl: en.canonicalUrl ?? "",
             noIndex: en.noIndex,
+            ogImage: en.ogImage,
           }
         : { ...EMPTY_SEO },
     };
@@ -156,14 +169,15 @@ export class SeoAdminService {
 
       for (const locale of ["ar", "en"] as const) {
         const input = values[locale];
-        const merged: SeoFields = {
+        const merged = {
           metaTitle: input.metaTitle?.trim() ?? "",
           metaDescription: input.metaDescription?.trim() ?? "",
           canonicalUrl: input.canonicalUrl?.trim() ?? "",
           noIndex: input.noIndex ?? false,
+          ogImageMediaId: input.ogImageMediaId ?? null,
         };
 
-        await tx.seoSetting.upsert({
+        const row = await tx.seoSetting.upsert({
           where: { entityType_entityId_locale: { entityType, entityId: normalizedEntityId, locale } },
           create: {
             entityType,
@@ -173,16 +187,25 @@ export class SeoAdminService {
             metaDescription: merged.metaDescription || null,
             canonicalUrl: merged.canonicalUrl || null,
             noIndex: merged.noIndex,
+            ogImageMediaId: merged.ogImageMediaId,
           },
           update: {
             metaTitle: merged.metaTitle || null,
             metaDescription: merged.metaDescription || null,
             canonicalUrl: merged.canonicalUrl || null,
             noIndex: merged.noIndex,
+            ogImageMediaId: merged.ogImageMediaId,
           },
+          include: { ogImage: { select: { id: true, url: true } } },
         });
 
-        saved[locale] = merged;
+        saved[locale] = {
+          metaTitle: merged.metaTitle,
+          metaDescription: merged.metaDescription,
+          canonicalUrl: merged.canonicalUrl,
+          noIndex: merged.noIndex,
+          ogImage: row.ogImage,
+        };
       }
 
       if (hasRealActor) {

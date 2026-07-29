@@ -14,7 +14,7 @@ import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
 import type {
   AdminMediaItem,
   MediaUsageItem,
-  MediaOwnerTypeValue,
+  MediaFilterCategory,
 } from "@/services/admin/media-library.service";
 import { getMediaUsageAction, deleteMediaAction } from "./actions";
 
@@ -28,20 +28,37 @@ const OWNER_LABEL: Record<string, string> = {
   ADMIN_UPLOAD: "رفع يدوي",
 };
 
-const OWNER_TYPES: MediaOwnerTypeValue[] = [
-  "REQUEST",
-  "USER_PROFILE",
-  "CATEGORY",
-  "PAGE_CONTENT",
-  "HOMEPAGE_HERO",
-  "SITE_LOGO",
-  "ADMIN_UPLOAD",
+/** "Meaningful" filters (replaces the old raw ownerType dropdown) —
+ * matches src/services/admin/media-library.service.ts's
+ * `MediaFilterCategory`, computed there from each image's ACTUAL
+ * current usage rather than how it was originally uploaded. "المدونة"
+ * always shows zero results — no Blog system exists in this schema
+ * yet (out of scope for this Media Library task); it's kept as a
+ * selectable filter per this task's requirements and will start
+ * matching real content automatically once a Blog system links
+ * `Media` rows the same way every other entity here already does. */
+const CATEGORY_FILTERS: { value: MediaFilterCategory; label: string }[] = [
+  { value: "all", label: "كل الصور" },
+  { value: "homepage", label: "الصفحة الرئيسية" },
+  { value: "categories", label: "التصنيفات" },
+  { value: "requests", label: "الطلبات" },
+  { value: "static_pages", label: "الصفحات الثابتة" },
+  { value: "blog", label: "المدونة" },
+  { value: "users", label: "المستخدمون" },
+  { value: "seo", label: "SEO" },
+  { value: "uploaded", label: "مرفوعة يدوياً" },
+  { value: "unused", label: "غير مستخدمة" },
 ];
 
 function formatSize(bytes: number | null): string {
   if (!bytes) return "—";
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} كيلوبايت`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} ميغابايت`;
+}
+
+function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("ar", { year: "numeric", month: "long", day: "numeric" });
 }
 
 /**
@@ -66,7 +83,7 @@ export function MediaLibraryManager({ initialItems }: { initialItems: AdminMedia
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState("");
-  const [ownerFilter, setOwnerFilter] = useState<"all" | MediaOwnerTypeValue>("all");
+  const [categoryFilter, setCategoryFilter] = useState<MediaFilterCategory>("all");
   const [lightboxItem, setLightboxItem] = useState<AdminMediaItem | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadAlt, setUploadAlt] = useState("");
@@ -81,11 +98,15 @@ export function MediaLibraryManager({ initialItems }: { initialItems: AdminMedia
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return initialItems.filter((item) => {
-      if (ownerFilter !== "all" && item.ownerType !== ownerFilter) return false;
+      if (categoryFilter !== "all" && !item.categories.includes(categoryFilter)) return false;
       if (!q) return true;
-      return (item.altText ?? "").toLowerCase().includes(q) || item.id.toLowerCase().includes(q);
+      return (
+        item.fileName.toLowerCase().includes(q) ||
+        (item.altText ?? "").toLowerCase().includes(q) ||
+        item.usage.some((u) => u.label.toLowerCase().includes(q) || u.type.toLowerCase().includes(q))
+      );
     });
-  }, [initialItems, search, ownerFilter]);
+  }, [initialItems, search, categoryFilter]);
 
   function openUploadForm() {
     setUploadAlt("");
@@ -262,11 +283,13 @@ export function MediaLibraryManager({ initialItems }: { initialItems: AdminMedia
             />
           </div>
           <div className="w-48">
-            <Select value={ownerFilter} onChange={(e) => setOwnerFilter(e.target.value as typeof ownerFilter)}>
-              <option value="all">كل الأنواع</option>
-              {OWNER_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {OWNER_LABEL[type]}
+            <Select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value as MediaFilterCategory)}
+            >
+              {CATEGORY_FILTERS.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
                 </option>
               ))}
             </Select>
@@ -283,51 +306,67 @@ export function MediaLibraryManager({ initialItems }: { initialItems: AdminMedia
           ) : (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
               {filtered.map((item) => (
-                <div
-                  key={item.id}
-                  className="group relative aspect-square overflow-hidden rounded-lg border border-border bg-surface-muted"
-                >
-                  <button
-                    type="button"
-                    onClick={() => setLightboxItem(item)}
-                    className="block h-full w-full"
-                    aria-label="معاينة الصورة"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.url}
-                      alt={item.altText ?? ""}
-                      className="h-full w-full object-cover transition group-hover:opacity-80"
-                    />
-                  </button>
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-navy-950/0 opacity-0 transition group-hover:bg-navy-950/40 group-hover:opacity-100">
+                <div key={item.id} className="overflow-hidden rounded-lg border border-border bg-white">
+                  <div className="group relative aspect-square bg-surface-muted">
                     <button
-                      onClick={() => triggerReplace(item)}
-                      disabled={isPending}
-                      className="pointer-events-auto rounded-lg bg-white/90 p-2 text-navy-950 transition hover:bg-white disabled:opacity-50"
-                      title="استبدال"
-                      aria-label="استبدال الصورة"
+                      type="button"
+                      onClick={() => setLightboxItem(item)}
+                      className="block h-full w-full"
+                      aria-label="معاينة الصورة"
                     >
-                      <RefreshCw className="h-4 w-4" />
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={item.url}
+                        alt={item.altText ?? ""}
+                        className="h-full w-full object-cover transition group-hover:opacity-80"
+                      />
                     </button>
-                    <button
-                      onClick={() => handleDeleteClick(item)}
-                      disabled={isPending}
-                      className="pointer-events-auto rounded-lg bg-white/90 p-2 text-red-600 transition hover:bg-white disabled:opacity-50"
-                      title="حذف"
-                      aria-label="حذف الصورة"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-navy-950/70 px-1.5 py-0.5 text-[10px] text-white">
-                    {OWNER_LABEL[item.ownerType] ?? item.ownerType}
-                  </span>
-                  {item.isReferenced && (
-                    <span className="pointer-events-none absolute left-1 top-1">
-                      <Badge tone="info">مستخدمة</Badge>
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 bg-navy-950/0 opacity-0 transition group-hover:bg-navy-950/40 group-hover:opacity-100">
+                      <button
+                        onClick={() => triggerReplace(item)}
+                        disabled={isPending}
+                        className="pointer-events-auto rounded-lg bg-white/90 p-2 text-navy-950 transition hover:bg-white disabled:opacity-50"
+                        title="استبدال"
+                        aria-label="استبدال الصورة"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteClick(item)}
+                        disabled={isPending}
+                        className="pointer-events-auto rounded-lg bg-white/90 p-2 text-red-600 transition hover:bg-white disabled:opacity-50"
+                        title="حذف"
+                        aria-label="حذف الصورة"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                    <span className="pointer-events-none absolute bottom-1 right-1 rounded bg-navy-950/70 px-1.5 py-0.5 text-[10px] text-white">
+                      {OWNER_LABEL[item.ownerType] ?? item.ownerType}
                     </span>
-                  )}
+                    {item.isReferenced && (
+                      <span className="pointer-events-none absolute left-1 top-1">
+                        <Badge tone="info">مستخدمة</Badge>
+                      </span>
+                    )}
+                  </div>
+                  {/* File name / dimensions / usage count — visible in
+                      the grid itself, not only behind the lightbox
+                      click (per this task's "every image must
+                      display..." requirement). */}
+                  <div className="space-y-0.5 p-2">
+                    <p className="truncate text-xs font-semibold text-navy-950" title={item.fileName}>
+                      {item.fileName}
+                    </p>
+                    <p className="truncate text-[11px] text-text-400">
+                      {item.width && item.height ? `${item.width}×${item.height}` : "—"} · {formatSize(item.sizeBytes)}
+                    </p>
+                    <p className="text-[11px] text-text-400">
+                      {item.usageCount > 0
+                        ? `مستخدمة في ${item.usageCount.toLocaleString("ar")} ${item.usageCount === 1 ? "مكان" : "أماكن"}`
+                        : "غير مستخدمة"}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -365,13 +404,27 @@ export function MediaLibraryManager({ initialItems }: { initialItems: AdminMedia
               />
             </div>
             <div className="grid grid-cols-2 gap-2 border-t border-border p-4 text-xs text-text-500 sm:grid-cols-4">
+              <p className="truncate" title={lightboxItem.fileName}>
+                الملف: {lightboxItem.fileName}
+              </p>
               <p>النوع: {OWNER_LABEL[lightboxItem.ownerType] ?? lightboxItem.ownerType}</p>
               <p>
                 الأبعاد: {lightboxItem.width && lightboxItem.height ? `${lightboxItem.width}×${lightboxItem.height}` : "—"}
               </p>
               <p>الحجم: {formatSize(lightboxItem.sizeBytes)}</p>
-              <p>{lightboxItem.isReferenced ? "مستخدمة حالياً" : "غير مستخدمة"}</p>
+              <p>تاريخ الرفع: {formatDate(lightboxItem.createdAt)}</p>
+              <p>{lightboxItem.isReferenced ? `مستخدمة في ${lightboxItem.usageCount.toLocaleString("ar")} مكان` : "غير مستخدمة"}</p>
             </div>
+            {lightboxItem.usage.length > 0 && (
+              <div className="space-y-1.5 border-t border-border p-4">
+                <p className="text-xs font-bold text-navy-950">مستخدمة في:</p>
+                {lightboxItem.usage.map((u, i) => (
+                  <p key={i} className="text-xs text-text-500">
+                    • <span className="font-semibold text-navy-950">{u.type}</span> — {u.label}
+                  </p>
+                ))}
+              </div>
+            )}
             <div className="flex justify-end gap-2 border-t border-border p-4">
               <a
                 href={lightboxItem.url}

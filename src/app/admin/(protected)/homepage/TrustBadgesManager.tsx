@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField, Toggle } from "@/components/ui/Field";
+import { MediaPicker, type MediaPickerValue } from "@/components/admin/MediaPicker";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
@@ -22,12 +23,13 @@ interface FormValues {
   labelAr: string;
   labelEn: string;
   isActive: boolean;
+  iconMedia: MediaPickerValue | null;
 }
 
-const EMPTY_FORM: FormValues = { labelAr: "", labelEn: "", isActive: true };
+const EMPTY_FORM: FormValues = { labelAr: "", labelEn: "", isActive: true, iconMedia: null };
 
 function toFormValues(badge: TrustBadgeListItem): FormValues {
-  return { labelAr: badge.labelAr, labelEn: badge.labelEn, isActive: badge.isActive };
+  return { labelAr: badge.labelAr, labelEn: badge.labelEn, isActive: badge.isActive, iconMedia: badge.iconMedia };
 }
 
 /** Real, database-backed Homepage Trust Badges management —
@@ -70,6 +72,7 @@ export function TrustBadgesManager({ initialBadges }: { initialBadges: TrustBadg
         labelAr: formValues.labelAr.trim(),
         labelEn: formValues.labelEn.trim(),
         isActive: formValues.isActive,
+        iconMediaId: formValues.iconMedia?.id ?? null,
       };
 
       const result = editingId
@@ -207,7 +210,13 @@ export function TrustBadgesManager({ initialBadges }: { initialBadges: TrustBadg
                 </FormField>
               )}
             />
-            <div>
+            <div className="space-y-4">
+              <FormField label="أيقونة الشارة">
+                <MediaPicker
+                  value={formValues.iconMedia}
+                  onChange={(media) => setFormValues((v) => ({ ...v, iconMedia: media }))}
+                />
+              </FormField>
               <Toggle
                 checked={formValues.isActive}
                 onChange={(value) => setFormValues((v) => ({ ...v, isActive: value }))}

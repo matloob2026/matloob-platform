@@ -7,6 +7,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, FormField, Toggle } from "@/components/ui/Field";
+import { MediaPicker, type MediaPickerValue } from "@/components/admin/MediaPicker";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
@@ -24,9 +25,10 @@ interface FormValues {
   labelAr: string;
   labelEn: string;
   isActive: boolean;
+  iconMedia: MediaPickerValue | null;
 }
 
-const EMPTY_FORM: FormValues = { key: "", value: "", labelAr: "", labelEn: "", isActive: true };
+const EMPTY_FORM: FormValues = { key: "", value: "", labelAr: "", labelEn: "", isActive: true, iconMedia: null };
 
 function toFormValues(stat: HomepageStatListItem): FormValues {
   return {
@@ -35,6 +37,7 @@ function toFormValues(stat: HomepageStatListItem): FormValues {
     labelAr: stat.labelAr,
     labelEn: stat.labelEn,
     isActive: stat.isActive,
+    iconMedia: stat.iconMedia,
   };
 }
 
@@ -83,6 +86,7 @@ export function HomepageStatsManager({ initialStats }: { initialStats: HomepageS
         labelAr: formValues.labelAr.trim(),
         labelEn: formValues.labelEn.trim(),
         isActive: formValues.isActive,
+        iconMediaId: formValues.iconMedia?.id ?? null,
       };
 
       const result = editingId
@@ -238,6 +242,12 @@ export function HomepageStatsManager({ initialStats }: { initialStats: HomepageS
                   value={formValues.key}
                   onChange={(e) => setFormValues((v) => ({ ...v, key: e.target.value }))}
                   disabled={Boolean(editingId)}
+                />
+              </FormField>
+              <FormField label="أيقونة الإحصائية">
+                <MediaPicker
+                  value={formValues.iconMedia}
+                  onChange={(media) => setFormValues((v) => ({ ...v, iconMedia: media }))}
                 />
               </FormField>
               <Toggle

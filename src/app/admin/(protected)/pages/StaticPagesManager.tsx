@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Select, FormField, Toggle } from "@/components/ui/Field";
+import { MediaPicker, type MediaPickerValue } from "@/components/admin/MediaPicker";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
@@ -37,6 +38,7 @@ interface FormValues {
   isActive: boolean;
   navPlacement: NavPlacement;
   navOrder: string;
+  featuredMedia: MediaPickerValue | null;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -48,6 +50,7 @@ const EMPTY_FORM: FormValues = {
   isActive: true,
   navPlacement: "none",
   navOrder: "0",
+  featuredMedia: null,
 };
 
 const NAV_PLACEMENT_LABELS: Record<NavPlacement, string> = {
@@ -67,6 +70,7 @@ function toFormValues(page: StaticPageListItem): FormValues {
     isActive: page.isActive,
     navPlacement: page.navPlacement,
     navOrder: String(page.navOrder),
+    featuredMedia: page.featuredMedia,
   };
 }
 
@@ -145,6 +149,7 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
         isActive: formValues.isActive,
         navPlacement: formValues.navPlacement,
         navOrder: Number(formValues.navOrder) || 0,
+        featuredMediaId: formValues.featuredMedia?.id ?? null,
       };
 
       const result = editingSlug
@@ -165,7 +170,22 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
       // how the rest of this form treats a slug change as a rename,
       // not a new entity.
       if (editingSlug && seoValues) {
-        await saveEntitySeoAction("static_page", editingSlug, seoValues);
+        await saveEntitySeoAction("static_page", editingSlug, {
+          ar: {
+            metaTitle: seoValues.ar.metaTitle,
+            metaDescription: seoValues.ar.metaDescription,
+            canonicalUrl: seoValues.ar.canonicalUrl,
+            noIndex: seoValues.ar.noIndex,
+            ogImageMediaId: seoValues.ar.ogImage?.id ?? null,
+          },
+          en: {
+            metaTitle: seoValues.en.metaTitle,
+            metaDescription: seoValues.en.metaDescription,
+            canonicalUrl: seoValues.en.canonicalUrl,
+            noIndex: seoValues.en.noIndex,
+            ogImageMediaId: seoValues.en.ogImage?.id ?? null,
+          },
+        });
       }
 
       showToast(editingSlug ? "تم تحديث الصفحة بنجاح." : "تم إضافة الصفحة بنجاح.", "success");
@@ -409,6 +429,14 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
                               }
                             />
                           </FormField>
+                          <FormField label={locale === "ar" ? "صورة Open Graph / Twitter" : "Open Graph / Twitter image"}>
+                            <MediaPicker
+                              value={seoValues[locale].ogImage}
+                              onChange={(media) =>
+                                setSeoValues((v) => (v ? { ...v, [locale]: { ...v[locale], ogImage: media } } : v))
+                              }
+                            />
+                          </FormField>
                           <Toggle
                             checked={seoValues[locale].noIndex}
                             onChange={(value) =>
@@ -435,6 +463,13 @@ export function StaticPagesManager({ initialPages }: { initialPages: StaticPageL
               onChange={(value) => setFormValues((v) => ({ ...v, isActive: value }))}
               label="منشورة (تظهر للزوار على الرابط العام)"
             />
+
+            <FormField label="صورة الصفحة (اختياري)">
+              <MediaPicker
+                value={formValues.featuredMedia}
+                onChange={(media) => setFormValues((v) => ({ ...v, featuredMedia: media }))}
+              />
+            </FormField>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField

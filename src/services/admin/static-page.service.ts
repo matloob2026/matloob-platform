@@ -170,6 +170,10 @@ export interface StaticPageListItem {
   isActive: boolean;
   navPlacement: NavPlacement;
   navOrder: number;
+  /** Media Library integration — reuses `PageContent.mediaId` (already
+   * in the schema), mirrored onto both locale rows the same way
+   * `extra` (nav placement/order) already is. */
+  featuredMedia: { id: string; url: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -183,6 +187,8 @@ export interface StaticPageInput {
   isActive?: boolean;
   navPlacement?: NavPlacement;
   navOrder?: number;
+  /** Existing `Media` row id, chosen via `<MediaPicker>`. `null` clears it. */
+  featuredMediaId?: string | null;
 }
 
 export type UpdateStaticPageInput = Partial<StaticPageInput>;
@@ -199,6 +205,8 @@ interface PageContentRow {
   body: string | null;
   isPublished: boolean;
   extra: unknown;
+  mediaId: string | null;
+  media?: { id: string; url: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -220,6 +228,7 @@ function toListItem(rows: PageContentRow[]): StaticPageListItem {
     isActive: anyRow.isPublished,
     navPlacement,
     navOrder,
+    featuredMedia: ar?.media ?? en?.media ?? null,
     createdAt: rows.reduce((min, r) => (r.createdAt < min ? r.createdAt : min), anyRow.createdAt),
     updatedAt: rows.reduce((max, r) => (r.updatedAt > max ? r.updatedAt : max), anyRow.updatedAt),
   };
@@ -294,7 +303,10 @@ function warnAuditSkipped(action: string, entityId: string, actorId: string): vo
 }
 
 async function findPageRows(slug: string): Promise<PageContentRow[]> {
-  return prisma.pageContent.findMany({ where: { page: slug, section: SECTION } });
+  return prisma.pageContent.findMany({
+    where: { page: slug, section: SECTION },
+    include: { media: { select: { id: true, url: true } } },
+  });
 }
 
 // ---------------------------------------------------------------------
@@ -355,6 +367,7 @@ export class StaticPageAdminService {
               body: input.contentAr,
               isPublished: input.isActive ?? true,
               extra: navMeta,
+              mediaId: input.featuredMediaId ?? null,
             },
           })
         );
@@ -370,6 +383,7 @@ export class StaticPageAdminService {
               body: input.contentEn,
               isPublished: input.isActive ?? true,
               extra: navMeta,
+              mediaId: input.featuredMediaId ?? null,
             },
           })
         );
@@ -421,6 +435,8 @@ export class StaticPageAdminService {
       isActive: input.isActive ?? beforeAr?.isPublished ?? beforeEn?.isPublished ?? true,
       navPlacement: input.navPlacement ?? beforeNavMeta.navPlacement,
       navOrder: input.navOrder ?? beforeNavMeta.navOrder,
+      featuredMediaId:
+        input.featuredMediaId !== undefined ? input.featuredMediaId : (beforeAr ?? beforeEn)?.mediaId ?? null,
     };
     validateInput(merged);
 
@@ -459,6 +475,7 @@ export class StaticPageAdminService {
                 body: merged.contentAr,
                 isPublished: merged.isActive,
                 extra: navMeta,
+                mediaId: merged.featuredMediaId ?? null,
               },
             })
           : await tx.pageContent.create({
@@ -470,6 +487,7 @@ export class StaticPageAdminService {
                 body: merged.contentAr,
                 isPublished: merged.isActive,
                 extra: navMeta,
+                mediaId: merged.featuredMediaId ?? null,
               },
             });
         rows.push(row);
@@ -479,7 +497,12 @@ export class StaticPageAdminService {
         rows.push(
           await tx.pageContent.update({
             where: { id: beforeAr.id },
-            data: { page: merged.slug, isPublished: merged.isActive, extra: navMeta },
+            data: {
+              page: merged.slug,
+              isPublished: merged.isActive,
+              extra: navMeta,
+              mediaId: merged.featuredMediaId ?? null,
+            },
           })
         );
       }
@@ -494,6 +517,7 @@ export class StaticPageAdminService {
                 body: merged.contentEn,
                 isPublished: merged.isActive,
                 extra: navMeta,
+                mediaId: merged.featuredMediaId ?? null,
               },
             })
           : await tx.pageContent.create({
@@ -505,6 +529,7 @@ export class StaticPageAdminService {
                 body: merged.contentEn,
                 isPublished: merged.isActive,
                 extra: navMeta,
+                mediaId: merged.featuredMediaId ?? null,
               },
             });
         rows.push(row);
@@ -512,7 +537,12 @@ export class StaticPageAdminService {
         rows.push(
           await tx.pageContent.update({
             where: { id: beforeEn.id },
-            data: { page: merged.slug, isPublished: merged.isActive, extra: navMeta },
+            data: {
+              page: merged.slug,
+              isPublished: merged.isActive,
+              extra: navMeta,
+              mediaId: merged.featuredMediaId ?? null,
+            },
           })
         );
       }

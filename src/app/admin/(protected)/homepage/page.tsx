@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Input, Textarea, FormField } from "@/components/ui/Field";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { TableSkeleton } from "@/components/admin/Skeleton";
+import { MediaPicker } from "@/components/admin/MediaPicker";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
   getMockHomepageContent,
@@ -64,6 +65,7 @@ const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
   ctaLabelAr: "",
   ctaLabelEn: "",
   ctaUrl: "",
+  heroMedia: null,
 };
 
 /**
@@ -86,7 +88,16 @@ function HeroSection({ initialContent }: { initialContent: HomepageMainContentIt
   async function handleSave() {
     setError(undefined);
     setIsSaving(true);
-    const result = await saveHomepageMainContentAction(values);
+    const result = await saveHomepageMainContentAction({
+      headingAr: values.headingAr,
+      headingEn: values.headingEn,
+      bodyAr: values.bodyAr,
+      bodyEn: values.bodyEn,
+      ctaLabelAr: values.ctaLabelAr,
+      ctaLabelEn: values.ctaLabelEn,
+      ctaUrl: values.ctaUrl,
+      heroMediaId: values.heroMedia?.id ?? null,
+    });
     setIsSaving(false);
 
     if (!result.success) {
@@ -156,6 +167,13 @@ function HeroSection({ initialContent }: { initialContent: HomepageMainContentIt
             dir="ltr"
             value={values.ctaUrl}
             onChange={(e) => setValues((v) => ({ ...v, ctaUrl: e.target.value }))}
+          />
+        </FormField>
+
+        <FormField label="الصورة الرئيسية للقسم (اختياري)">
+          <MediaPicker
+            value={values.heroMedia}
+            onChange={(media) => setValues((v) => ({ ...v, heroMedia: media }))}
           />
         </FormField>
 

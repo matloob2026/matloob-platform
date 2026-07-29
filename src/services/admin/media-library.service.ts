@@ -117,9 +117,40 @@ function assertValidImageFile(file: { size: number; type: string }): void {
   }
 }
 
+/**
+ * "Meaningful" filter buckets (replaces the old raw `ownerType`
+ * filter) — computed per item from its ACTUAL current usage (via
+ * `computeUsageForMediaIds` below), not from how it was originally
+ * uploaded, so e.g. an image originally uploaded straight into the
+ * library that an admin later picks as a category icon correctly
+ * shows up under "التصنيفات", not stuck under "مرفوعة يدوياً".
+ *
+ * "blog" has no matching data yet — no Blog system exists in this
+ * schema (explicitly out of scope for every prior checkpoint). It's
+ * kept as a selectable filter per this task's requirements; it will
+ * simply always show zero results until a Blog system exists and
+ * links `Media` rows the same way every other entity here does.
+ */
+export type MediaFilterCategory =
+  | "all"
+  | "homepage"
+  | "categories"
+  | "requests"
+  | "static_pages"
+  | "blog"
+  | "users"
+  | "seo"
+  | "uploaded"
+  | "unused";
+
 export interface AdminMediaItem {
   id: string;
   url: string;
+  /** Derived from the asset URL — `Media` has no dedicated filename
+   * column, so this mirrors what src/services/media.service.ts's own
+   * Cloudinary integration already treats as the effective name (the
+   * last path segment of the delivery URL). */
+  fileName: string;
   altText: string | null;
   ownerType: string;
   width: number | null;
@@ -127,9 +158,10 @@ export interface AdminMediaItem {
   sizeBytes: number | null;
   mimeType: string | null;
   createdAt: Date;
-  /** Quick, cheap usage indicator for the grid — the exact list is
-   * only fetched (via getMediaUsage) when the admin tries to delete. */
   isReferenced: boolean;
+  usageCount: number;
+  usage: MediaUsageItem[];
+  categories: MediaFilterCategory[];
 }
 
 export interface MediaUsageItem {
@@ -182,10 +214,46 @@ function isReferenced(counts: MediaRecord["_count"]): boolean {
   return Object.values(counts).some((count) => count > 0);
 }
 
-function toListItem(media: MediaRecord): AdminMediaItem {
+/** `Media` has no dedicated filename column — derive one from the
+ * delivery URL's last path segment, same convention already implied
+ * by src/services/media.service.ts's Cloudinary usage. */
+function deriveFileName(url: string): string {
+  try {
+    const path = new URL(url).pathname;
+    const last = path.split("/").filter(Boolean).pop();
+    return last ? decodeURIComponent(last) : url;
+  } catch {
+    const last = url.split("/").filter(Boolean).pop();
+    return last ?? url;
+  }
+}
+
+/** Maps an item's ACTUAL current usage (not how it was originally
+ * uploaded) onto the "meaningful" filter buckets — see
+ * `MediaFilterCategory`'s docstring. */
+function deriveCategories(ownerType: string, usage: MediaUsageItem[]): MediaFilterCategory[] {
+  const categories = new Set<MediaFilterCategory>();
+
+  for (const item of usage) {
+    if (item.type === "الصفحة الرئيسية") categories.add("homepage");
+    else if (item.type === "تصنيف") categories.add("categories");
+    else if (item.type === "طلبات" || item.type === "رسائل") categories.add("requests");
+    else if (item.type === "صفحة ثابتة") categories.add("static_pages");
+    else if (item.type === "ملفات شخصية") categories.add("users");
+    else if (item.type === "SEO") categories.add("seo");
+  }
+
+  if (ownerType === "ADMIN_UPLOAD") categories.add("uploaded");
+  if (usage.length === 0) categories.add("unused");
+
+  return Array.from(categories);
+}
+
+function toListItem(media: MediaRecord, usage: MediaUsageItem[]): AdminMediaItem {
   return {
     id: media.id,
     url: media.url,
+    fileName: deriveFileName(media.url),
     altText: media.altText,
     ownerType: media.ownerType,
     width: media.width,
@@ -194,7 +262,138 @@ function toListItem(media: MediaRecord): AdminMediaItem {
     mimeType: media.mimeType,
     createdAt: media.createdAt,
     isReferenced: isReferenced(media._count),
+    usageCount: usage.length,
+    usage,
+    categories: deriveCategories(media.ownerType, usage),
   };
+}
+
+/**
+ * Computes, in one batched pass, exactly where every one of the given
+ * `Media` ids is currently used — every relation that can point at a
+ * `Media` row (see the schema comment on `Media` itself): request
+ * galleries, message attachments, category icons/images, homepage
+ * stats/trust-badge icons, page content (homepage sections AND real
+ * static pages, distinguished by `page === "homepage"`), SEO Open
+ * Graph images, and profile avatars.
+ *
+ * Batched (queried once across ALL ids with `{ in: mediaIds }`, not
+ * once per id) so both `listMedia` (usage for potentially many items
+ * at once) and `getMediaUsage` (a single id) share this exact same
+ * logic without either duplicating it or paying an N+1 query cost for
+ * the list view.
+ */
+async function computeUsageForMediaIds(mediaIds: string[]): Promise<Map<string, MediaUsageItem[]>> {
+  const result = new Map<string, MediaUsageItem[]>(mediaIds.map((id) => [id, []]));
+  if (mediaIds.length === 0) return result;
+
+  const push = (mediaId: string, item: MediaUsageItem) => {
+    result.get(mediaId)?.push(item);
+  };
+
+  const [requests, messages, categories, homepageStats, trustBadges, pageContents, seoSettings, profiles] =
+    await Promise.all([
+      prisma.request.findMany({
+        where: { media: { some: { id: { in: mediaIds } } } },
+        select: { id: true, media: { where: { id: { in: mediaIds } }, select: { id: true } } },
+      }),
+      prisma.message.findMany({
+        where: { attachments: { some: { id: { in: mediaIds } } } },
+        select: { id: true, attachments: { where: { id: { in: mediaIds } }, select: { id: true } } },
+      }),
+      prisma.category.findMany({
+        where: { OR: [{ iconMediaId: { in: mediaIds } }, { imageMediaId: { in: mediaIds } }] },
+        include: { translations: true },
+      }),
+      prisma.homepageStat.findMany({
+        where: { iconMediaId: { in: mediaIds } },
+        include: { translations: true },
+      }),
+      prisma.trustBadge.findMany({
+        where: { iconMediaId: { in: mediaIds } },
+        include: { translations: true },
+      }),
+      prisma.pageContent.findMany({
+        where: { mediaId: { in: mediaIds } },
+        select: { mediaId: true, page: true, section: true, locale: true },
+      }),
+      prisma.seoSetting.findMany({
+        where: { ogImageMediaId: { in: mediaIds } },
+        select: { ogImageMediaId: true, entityType: true, entityId: true, locale: true },
+      }),
+      prisma.userProfile.findMany({
+        where: { avatarMediaId: { in: mediaIds } },
+        select: { avatarMediaId: true },
+      }),
+    ]);
+
+  for (const request of requests as { id: string; media: { id: string }[] }[]) {
+    for (const m of request.media) {
+      push(m.id, { type: "طلبات", label: "مستخدمة في أحد الطلبات" });
+    }
+  }
+  for (const message of messages as { id: string; attachments: { id: string }[] }[]) {
+    for (const a of message.attachments) {
+      push(a.id, { type: "رسائل", label: "مرفقة في إحدى المحادثات" });
+    }
+  }
+  for (const category of categories as {
+    iconMediaId: string | null;
+    imageMediaId: string | null;
+    translations: { locale: string; name: string }[];
+  }[]) {
+    const name = category.translations.find((t) => t.locale === "ar")?.name ?? category.translations[0]?.name ?? "";
+    if (category.iconMediaId && mediaIds.includes(category.iconMediaId)) {
+      push(category.iconMediaId, { type: "تصنيف", label: `أيقونة تصنيف "${name}"` });
+    }
+    if (category.imageMediaId && mediaIds.includes(category.imageMediaId)) {
+      push(category.imageMediaId, { type: "تصنيف", label: `صورة تصنيف "${name}"` });
+    }
+  }
+  for (const stat of homepageStats as {
+    iconMediaId: string | null;
+    translations: { locale: string; label: string }[];
+  }[]) {
+    if (!stat.iconMediaId) continue;
+    const label = stat.translations.find((t) => t.locale === "ar")?.label ?? stat.translations[0]?.label ?? "";
+    push(stat.iconMediaId, { type: "الصفحة الرئيسية", label: `أيقونة إحصائية "${label}"` });
+  }
+  for (const badge of trustBadges as {
+    iconMediaId: string | null;
+    translations: { locale: string; label: string }[];
+  }[]) {
+    if (!badge.iconMediaId) continue;
+    const label = badge.translations.find((t) => t.locale === "ar")?.label ?? badge.translations[0]?.label ?? "";
+    push(badge.iconMediaId, { type: "الصفحة الرئيسية", label: `أيقونة شارة ثقة "${label}"` });
+  }
+  for (const page of pageContents as { mediaId: string | null; page: string; section: string; locale: string }[]) {
+    if (!page.mediaId) continue;
+    if (page.page === "homepage") {
+      push(page.mediaId, { type: "الصفحة الرئيسية", label: `قسم "${page.section}" (${page.locale})` });
+    } else {
+      push(page.mediaId, { type: "صفحة ثابتة", label: `صفحة "${page.page}" (${page.locale})` });
+    }
+  }
+  for (const seo of seoSettings as {
+    ogImageMediaId: string | null;
+    entityType: string;
+    entityId: string | null;
+    locale: string;
+  }[]) {
+    if (!seo.ogImageMediaId) continue;
+    const entityLabel = seo.entityId ? seo.entityId : "عام";
+    push(seo.ogImageMediaId, { type: "SEO", label: `صورة Open Graph لـ ${seo.entityType} (${entityLabel})` });
+  }
+  const profileCounts = new Map<string, number>();
+  for (const profile of profiles as { avatarMediaId: string | null }[]) {
+    if (!profile.avatarMediaId) continue;
+    profileCounts.set(profile.avatarMediaId, (profileCounts.get(profile.avatarMediaId) ?? 0) + 1);
+  }
+  for (const [mediaId, count] of profileCounts) {
+    push(mediaId, { type: "ملفات شخصية", label: `الصورة الشخصية لـ ${count.toLocaleString("ar")} مستخدم` });
+  }
+
+  return result;
 }
 
 async function actorExists(actorId: string): Promise<boolean> {
@@ -211,19 +410,41 @@ function warnAuditSkipped(action: string, entityId: string, actorId: string): vo
 }
 
 export class MediaLibraryAdminService {
-  async listMedia(filters?: { search?: string; ownerType?: MediaOwnerTypeValue }): Promise<AdminMediaItem[]> {
+  /** In-memory search across fileName, alt text, and every usage
+   * label (category/page/request/etc. names) — richer than a single
+   * DB column filter, and there's no clean single-query way to filter
+   * on a computed, multi-relation usage list anyway. Media libraries
+   * are small enough in this app that computing usage for the full
+   * (optionally category-filtered) set first, then filtering in JS,
+   * is simpler and just as fast in practice. */
+  private matchesSearch(item: AdminMediaItem, query: string): boolean {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    if (item.fileName.toLowerCase().includes(q)) return true;
+    if ((item.altText ?? "").toLowerCase().includes(q)) return true;
+    return item.usage.some((u) => u.label.toLowerCase().includes(q) || u.type.toLowerCase().includes(q));
+  }
+
+  async listMedia(filters?: { search?: string; category?: MediaFilterCategory }): Promise<AdminMediaItem[]> {
     const media = await prisma.media.findMany({
-      where: {
-        deletedAt: null,
-        ...(filters?.ownerType ? { ownerType: filters.ownerType } : {}),
-        ...(filters?.search
-          ? { altText: { contains: filters.search, mode: "insensitive" as const } }
-          : {}),
-      },
+      where: { deletedAt: null },
       include: MEDIA_INCLUDE,
       orderBy: { createdAt: "desc" },
     });
-    return media.map((m: MediaRecord) => toListItem(m));
+
+    const usageByMediaId = await computeUsageForMediaIds(media.map((m: MediaRecord) => m.id));
+    let items = media.map((m: MediaRecord) => toListItem(m, usageByMediaId.get(m.id) ?? []));
+
+    if (filters?.category && filters.category !== "all") {
+      const category = filters.category;
+      items = items.filter((item: AdminMediaItem) => item.categories.includes(category));
+    }
+    if (filters?.search) {
+      const search = filters.search;
+      items = items.filter((item: AdminMediaItem) => this.matchesSearch(item, search));
+    }
+
+    return items;
   }
 
   /** The specific, human-readable list of everywhere an image is used
@@ -233,62 +454,8 @@ export class MediaLibraryAdminService {
     if (!media) {
       throw new MediaLibraryServiceError("الصورة غير موجودة.", "NOT_FOUND");
     }
-
-    const [requestCount, messageCount, categories, homepageStats, trustBadges, pageContents, seoSettings, profiles] =
-      await Promise.all([
-        prisma.request.count({ where: { media: { some: { id: mediaId } } } }),
-        prisma.message.count({ where: { attachments: { some: { id: mediaId } } } }),
-        prisma.category.findMany({
-          where: { OR: [{ iconMediaId: mediaId }, { imageMediaId: mediaId }] },
-          include: { translations: true },
-        }),
-        prisma.homepageStat.findMany({ where: { iconMediaId: mediaId }, include: { translations: true } }),
-        prisma.trustBadge.findMany({ where: { iconMediaId: mediaId }, include: { translations: true } }),
-        prisma.pageContent.findMany({ where: { mediaId }, select: { page: true, section: true, locale: true } }),
-        prisma.seoSetting.findMany({
-          where: { ogImageMediaId: mediaId },
-          select: { entityType: true, entityId: true, locale: true },
-        }),
-        prisma.userProfile.count({ where: { avatarMediaId: mediaId } }),
-      ]);
-
-    const usage: MediaUsageItem[] = [];
-
-    if (requestCount > 0) {
-      usage.push({ type: "طلبات", label: `مستخدمة في ${requestCount.toLocaleString("ar")} طلب` });
-    }
-    if (messageCount > 0) {
-      usage.push({ type: "رسائل", label: `مرفقة في ${messageCount.toLocaleString("ar")} رسالة` });
-    }
-    for (const category of categories as {
-      id: string;
-      iconMediaId: string | null;
-      translations: { locale: string; name: string }[];
-    }[]) {
-      const name = category.translations.find((t) => t.locale === "ar")?.name ?? category.translations[0]?.name ?? "";
-      const role = category.iconMediaId === mediaId ? "أيقونة" : "صورة";
-      usage.push({ type: "تصنيف", label: `${role} تصنيف "${name}"` });
-    }
-    for (const stat of homepageStats as { translations: { locale: string; label: string }[] }[]) {
-      const label = stat.translations.find((t) => t.locale === "ar")?.label ?? stat.translations[0]?.label ?? "";
-      usage.push({ type: "الصفحة الرئيسية", label: `أيقونة إحصائية "${label}"` });
-    }
-    for (const badge of trustBadges as { translations: { locale: string; label: string }[] }[]) {
-      const label = badge.translations.find((t) => t.locale === "ar")?.label ?? badge.translations[0]?.label ?? "";
-      usage.push({ type: "الصفحة الرئيسية", label: `أيقونة شارة ثقة "${label}"` });
-    }
-    for (const page of pageContents as { page: string; section: string; locale: string }[]) {
-      usage.push({ type: "صفحة", label: `صفحة "${page.page}" (${page.section}, ${page.locale})` });
-    }
-    for (const seo of seoSettings as { entityType: string; entityId: string; locale: string }[]) {
-      const entityLabel = seo.entityId ? seo.entityId : "عام";
-      usage.push({ type: "SEO", label: `صورة Open Graph لـ ${seo.entityType} (${entityLabel})` });
-    }
-    if (profiles > 0) {
-      usage.push({ type: "ملفات شخصية", label: `الصورة الشخصية لـ ${profiles.toLocaleString("ar")} مستخدم` });
-    }
-
-    return usage;
+    const usageByMediaId = await computeUsageForMediaIds([mediaId]);
+    return usageByMediaId.get(mediaId) ?? [];
   }
 
   async uploadMedia(
@@ -342,7 +509,7 @@ export class MediaLibraryAdminService {
       return media;
     });
 
-    return toListItem(created);
+    return toListItem(created, []);
   }
 
   /**
@@ -416,7 +583,8 @@ export class MediaLibraryAdminService {
       }
     }
 
-    return toListItem(updated);
+    const usageByMediaId = await computeUsageForMediaIds([mediaId]);
+    return toListItem(updated, usageByMediaId.get(mediaId) ?? []);
   }
 
   /**

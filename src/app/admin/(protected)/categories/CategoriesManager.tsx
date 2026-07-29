@@ -8,6 +8,7 @@ import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Select, FormField, Toggle } from "@/components/ui/Field";
+import { MediaPicker, type MediaPickerValue } from "@/components/admin/MediaPicker";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
@@ -30,6 +31,8 @@ interface FormValues {
   isActive: boolean;
   sortOrder: number;
   parentId: string;
+  iconMedia: MediaPickerValue | null;
+  imageMedia: MediaPickerValue | null;
 }
 
 const EMPTY_FORM: FormValues = {
@@ -41,6 +44,8 @@ const EMPTY_FORM: FormValues = {
   isActive: true,
   sortOrder: 0,
   parentId: "",
+  iconMedia: null,
+  imageMedia: null,
 };
 
 function toFormValues(category: AdminCategoryListItem): FormValues {
@@ -53,6 +58,8 @@ function toFormValues(category: AdminCategoryListItem): FormValues {
     isActive: category.isActive,
     sortOrder: category.sortOrder,
     parentId: category.parentId ?? "",
+    iconMedia: category.iconMedia,
+    imageMedia: category.imageMedia,
   };
 }
 
@@ -113,6 +120,8 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
         isActive: formValues.isActive,
         sortOrder: formValues.sortOrder,
         parentId: formValues.parentId || null,
+        iconMediaId: formValues.iconMedia?.id ?? null,
+        imageMediaId: formValues.imageMedia?.id ?? null,
       };
 
       const result = editingId
@@ -310,10 +319,19 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
                     ))}
                 </Select>
               </FormField>
-              <FormField label="الأيقونة / الصورة">
-                <Button variant="outline" size="sm" type="button" disabled>
-                  اختيار من مكتبة الوسائط (قريباً)
-                </Button>
+              <FormField label="أيقونة التصنيف">
+                <MediaPicker
+                  value={formValues.iconMedia}
+                  onChange={(media) => setFormValues((v) => ({ ...v, iconMedia: media }))}
+                  label="اختيار أيقونة من مكتبة الوسائط"
+                />
+              </FormField>
+              <FormField label="صورة التصنيف">
+                <MediaPicker
+                  value={formValues.imageMedia}
+                  onChange={(media) => setFormValues((v) => ({ ...v, imageMedia: media }))}
+                  label="اختيار صورة من مكتبة الوسائط"
+                />
               </FormField>
               <Toggle
                 checked={formValues.isActive}

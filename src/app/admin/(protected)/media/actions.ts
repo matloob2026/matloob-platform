@@ -20,6 +20,12 @@
  * `media:view` (already granted to ADMIN and MODERATOR since
  * Checkpoint 01 — MODERATOR can browse read-only); the delete
  * mutation requires `MEDIA_MANAGE_PERMISSION` (ADMIN only).
+ *
+ * `listMediaAction` is also imported directly by the reusable
+ * `<MediaPicker>` component (src/components/admin/MediaPicker.tsx),
+ * used from other Admin CMS screens (e.g. Categories) to let the
+ * admin choose an EXISTING Media Library image instead of uploading
+ * a new one — same permission, same data, no second list endpoint.
  */
 
 import { revalidatePath } from "next/cache";
@@ -28,7 +34,7 @@ import { MEDIA_MANAGE_PERMISSION } from "@/auth/permissions";
 import {
   mediaLibraryAdminService,
   MediaLibraryServiceError,
-  type MediaOwnerTypeValue,
+  type MediaFilterCategory,
 } from "@/services/admin/media-library.service";
 
 export interface MediaActionState {
@@ -53,7 +59,11 @@ function revalidateMedia(): void {
   revalidatePath("/");
 }
 
-export async function listMediaAction(filters?: { search?: string; ownerType?: MediaOwnerTypeValue }) {
+/** Also used by the reusable `<MediaPicker>` component (see
+ * src/components/admin/MediaPicker.tsx) so any other Admin CMS screen
+ * that wants to let the admin choose an EXISTING image reuses this
+ * exact same read path — no second "list media" implementation. */
+export async function listMediaAction(filters?: { search?: string; category?: MediaFilterCategory }) {
   await requirePermission("media:view");
   return mediaLibraryAdminService.listMedia(filters);
 }

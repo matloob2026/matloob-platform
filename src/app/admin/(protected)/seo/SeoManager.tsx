@@ -7,6 +7,7 @@ import { Tabs } from "@/components/admin/Tabs";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, FormField, Toggle } from "@/components/ui/Field";
+import { MediaPicker } from "@/components/admin/MediaPicker";
 import { TranslationTabs } from "@/components/admin/TranslationTabs";
 import { useToast } from "@/components/ui/ToastProvider";
 import type { SeoFields, UpdateSeoFields } from "@/services/admin/seo.service";
@@ -19,11 +20,13 @@ import { saveEntitySeoAction, saveSeoGlobalSettingsAction } from "./actions";
  * entityId null — see src/services/admin/seo.service.ts); "Technical
  * SEO" edits the `SiteSetting` "seo" group (keywords/robots.txt
  * override/schema.org JSON-LD). Open Graph reuses the same title/
- * description fields — see seo.service.ts's docstring for why there's
- * no separate OG column in the schema. Static Page SEO is edited
- * inline in src/app/admin/(protected)/pages/StaticPagesManager.tsx,
- * not here — this screen only covers the two entities inherently
- * singular for the platform (global defaults, the one homepage).
+ * description fields (see seo.service.ts's docstring) but has its own
+ * image, picked via the Media Library's `<MediaPicker>` (reuses
+ * `SeoSetting.ogImageMediaId`, already in the schema). Static Page SEO
+ * is edited inline in
+ * src/app/admin/(protected)/pages/StaticPagesManager.tsx, not here —
+ * this screen only covers the two entities inherently singular for
+ * the platform (global defaults, the one homepage).
  */
 
 function SaveBar({ isSaving, onSave }: { isSaving: boolean; onSave: () => void }) {
@@ -62,7 +65,22 @@ function EntitySeoForm({
   function save() {
     setError(undefined);
     startTransition(async () => {
-      const result = await saveEntitySeoAction(entityType, entityId, values);
+      const result = await saveEntitySeoAction(entityType, entityId, {
+        ar: {
+          metaTitle: values.ar.metaTitle,
+          metaDescription: values.ar.metaDescription,
+          canonicalUrl: values.ar.canonicalUrl,
+          noIndex: values.ar.noIndex,
+          ogImageMediaId: values.ar.ogImage?.id ?? null,
+        },
+        en: {
+          metaTitle: values.en.metaTitle,
+          metaDescription: values.en.metaDescription,
+          canonicalUrl: values.en.canonicalUrl,
+          noIndex: values.en.noIndex,
+          ogImageMediaId: values.en.ogImage?.id ?? null,
+        },
+      });
       if (!result.success) {
         setError(result.error);
         return;
@@ -104,6 +122,15 @@ function EntitySeoForm({
                   placeholder="https://matloob.com/..."
                   value={fields.canonicalUrl}
                   onChange={(e) => update(locale, { canonicalUrl: e.target.value })}
+                />
+              </FormField>
+              <FormField
+                label="صورة Open Graph / Twitter"
+                hint="تُستخدم عند مشاركة الرابط على وسائل التواصل الاجتماعي"
+              >
+                <MediaPicker
+                  value={fields.ogImage}
+                  onChange={(media) => setValues((v) => ({ ...v, [locale]: { ...v[locale], ogImage: media } }))}
                 />
               </FormField>
               <Toggle

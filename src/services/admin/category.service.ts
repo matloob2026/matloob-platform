@@ -106,6 +106,13 @@ export interface AdminCategoryListItem {
   parentId: string | null;
   /** Count of non-deleted requests currently using this category. */
   requestCount: number;
+  /** Media Library integration — reuses the existing `Media` model via
+   * `Category.iconMediaId`/`imageMediaId` (already in the schema, never
+   * exposed in the Admin form before this task). Resolved to
+   * `{id, url}` here (not just the id) so the Admin form's
+   * `<MediaPicker>` can show the current selection immediately. */
+  iconMedia: { id: string; url: string } | null;
+  imageMedia: { id: string; url: string } | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -123,6 +130,11 @@ export interface CategoryInput {
    * the Admin form previously never exposed. `null`/omitted means a
    * top-level category. */
   parentId?: string | null;
+  /** Existing `Media` row ids, chosen via `<MediaPicker>` — never a
+   * fresh upload from this form itself; uploading stays exclusively a
+   * Media Library action. `null` clears the selection. */
+  iconMediaId?: string | null;
+  imageMediaId?: string | null;
 }
 
 export type UpdateCategoryInput = Partial<CategoryInput>;
@@ -145,17 +157,23 @@ interface CategoryRecord {
   id: string;
   slug: string;
   parentId: string | null;
+  iconMediaId: string | null;
+  imageMediaId: string | null;
   isActive: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
   translations: TranslationRow[];
   _count: { requests: number };
+  icon: { id: string; url: string } | null;
+  image: { id: string; url: string } | null;
 }
 
 const CATEGORY_INCLUDE = {
   translations: true,
   _count: { select: { requests: { where: { deletedAt: null } } } },
+  icon: { select: { id: true, url: true } },
+  image: { select: { id: true, url: true } },
 };
 
 function toListItem(category: CategoryRecord): AdminCategoryListItem {
@@ -172,6 +190,8 @@ function toListItem(category: CategoryRecord): AdminCategoryListItem {
     sortOrder: category.sortOrder,
     parentId: category.parentId,
     requestCount: category._count.requests,
+    iconMedia: category.icon,
+    imageMedia: category.image,
     createdAt: category.createdAt,
     updatedAt: category.updatedAt,
   };
@@ -310,6 +330,8 @@ export class CategoryAdminService {
           isActive: input.isActive ?? true,
           sortOrder: input.sortOrder ?? 0,
           parentId: input.parentId ?? null,
+          iconMediaId: input.iconMediaId ?? null,
+          imageMediaId: input.imageMediaId ?? null,
           translations: {
             create: [
               { locale: "ar", name: input.nameAr, description: input.descriptionAr ?? null },
@@ -359,6 +381,8 @@ export class CategoryAdminService {
       isActive: input.isActive ?? before.isActive,
       sortOrder: input.sortOrder ?? before.sortOrder,
       parentId: input.parentId !== undefined ? input.parentId : before.parentId,
+      iconMediaId: input.iconMediaId !== undefined ? input.iconMediaId : before.iconMediaId,
+      imageMediaId: input.imageMediaId !== undefined ? input.imageMediaId : before.imageMediaId,
     };
     validateInput(merged);
     await validateParent(merged.parentId, id);
@@ -380,6 +404,8 @@ export class CategoryAdminService {
           isActive: merged.isActive,
           sortOrder: merged.sortOrder,
           parentId: merged.parentId ?? null,
+          iconMediaId: merged.iconMediaId ?? null,
+          imageMediaId: merged.imageMediaId ?? null,
           translations: {
             upsert: [
               {

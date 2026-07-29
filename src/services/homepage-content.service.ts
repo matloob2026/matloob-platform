@@ -160,6 +160,10 @@ export interface HomepageMainContentItem {
    * the schema stores it per-locale, but this checkpoint exposes one
    * field and mirrors it onto both locale rows on save). */
   ctaUrl: string;
+  /** Media Library integration — reuses `PageContent.mediaId` (already
+   * in the schema), mirrored onto both locale rows the same way
+   * `ctaUrl` already is. */
+  heroMedia: { id: string; url: string } | null;
 }
 
 export interface HomepageMainContentInput {
@@ -170,6 +174,8 @@ export interface HomepageMainContentInput {
   ctaLabelAr: string;
   ctaLabelEn: string;
   ctaUrl: string;
+  /** Existing `Media` row id, chosen via `<MediaPicker>`. `null` clears it. */
+  heroMediaId?: string | null;
 }
 
 interface PageContentRow {
@@ -177,7 +183,9 @@ interface PageContentRow {
   body: string | null;
   ctaLabel: string | null;
   ctaUrl: string | null;
+  mediaId: string | null;
   locale: string;
+  media?: { id: string; url: string } | null;
 }
 
 function validateMainContent(input: HomepageMainContentInput): void {
@@ -226,6 +234,9 @@ export interface HomepageStatListItem {
   labelEn: string;
   isActive: boolean;
   sortOrder: number;
+  /** Media Library integration — reuses the existing `Media` model via
+   * `HomepageStat.iconMediaId` (already in the schema). */
+  iconMedia: { id: string; url: string } | null;
 }
 
 export interface HomepageStatInput {
@@ -235,6 +246,8 @@ export interface HomepageStatInput {
   labelEn: string;
   isActive?: boolean;
   sortOrder?: number;
+  /** Existing `Media` row id, chosen via `<MediaPicker>`. `null` clears it. */
+  iconMediaId?: string | null;
 }
 
 export type UpdateHomepageStatInput = Partial<HomepageStatInput>;
@@ -252,10 +265,12 @@ interface HomepageStatRecord {
   value: number;
   sortOrder: number;
   isActive: boolean;
+  iconMediaId: string | null;
   translations: StatTranslationRow[];
+  icon: { id: string; url: string } | null;
 }
 
-const STAT_INCLUDE = { translations: true };
+const STAT_INCLUDE = { translations: true, icon: { select: { id: true, url: true } } };
 
 function toStatListItem(stat: HomepageStatRecord): HomepageStatListItem {
   const ar = stat.translations.find((t: StatTranslationRow) => t.locale === "ar");
@@ -268,6 +283,7 @@ function toStatListItem(stat: HomepageStatRecord): HomepageStatListItem {
     labelEn: en?.label ?? stat.translations[0]?.label ?? "",
     isActive: stat.isActive,
     sortOrder: stat.sortOrder,
+    iconMedia: stat.icon,
   };
 }
 
@@ -299,6 +315,9 @@ export interface TrustBadgeListItem {
   labelEn: string;
   isActive: boolean;
   sortOrder: number;
+  /** Media Library integration — reuses the existing `Media` model via
+   * `TrustBadge.iconMediaId` (already in the schema). */
+  iconMedia: { id: string; url: string } | null;
 }
 
 export interface TrustBadgeInput {
@@ -306,6 +325,8 @@ export interface TrustBadgeInput {
   labelEn: string;
   isActive?: boolean;
   sortOrder?: number;
+  /** Existing `Media` row id, chosen via `<MediaPicker>`. `null` clears it. */
+  iconMediaId?: string | null;
 }
 
 export type UpdateTrustBadgeInput = Partial<TrustBadgeInput>;
@@ -314,10 +335,12 @@ interface TrustBadgeRecord {
   id: string;
   sortOrder: number;
   isActive: boolean;
+  iconMediaId: string | null;
   translations: StatTranslationRow[];
+  icon: { id: string; url: string } | null;
 }
 
-const TRUST_BADGE_INCLUDE = { translations: true };
+const TRUST_BADGE_INCLUDE = { translations: true, icon: { select: { id: true, url: true } } };
 
 function toTrustBadgeListItem(badge: TrustBadgeRecord): TrustBadgeListItem {
   const ar = badge.translations.find((t: StatTranslationRow) => t.locale === "ar");
@@ -328,6 +351,7 @@ function toTrustBadgeListItem(badge: TrustBadgeRecord): TrustBadgeListItem {
     labelEn: en?.label ?? badge.translations[0]?.label ?? "",
     isActive: badge.isActive,
     sortOrder: badge.sortOrder,
+    iconMedia: badge.icon,
   };
 }
 
@@ -353,6 +377,7 @@ export class HomepageAdminContentService {
   async getMainContent(): Promise<HomepageMainContentItem | null> {
     const rows = await prisma.pageContent.findMany({
       where: { page: "homepage", section: "hero", locale: { in: [...HOMEPAGE_LOCALES] } },
+      include: { media: { select: { id: true, url: true } } },
     });
     if (rows.length === 0) return null;
 
@@ -366,6 +391,7 @@ export class HomepageAdminContentService {
       ctaLabelAr: ar?.ctaLabel ?? "",
       ctaLabelEn: en?.ctaLabel ?? "",
       ctaUrl: ar?.ctaUrl ?? en?.ctaUrl ?? "",
+      heroMedia: ar?.media ?? en?.media ?? null,
     };
   }
 
@@ -388,12 +414,14 @@ export class HomepageAdminContentService {
           body: input.bodyAr,
           ctaLabel: input.ctaLabelAr,
           ctaUrl: input.ctaUrl,
+          mediaId: input.heroMediaId ?? null,
         },
         update: {
           heading: input.headingAr,
           body: input.bodyAr,
           ctaLabel: input.ctaLabelAr,
           ctaUrl: input.ctaUrl,
+          mediaId: input.heroMediaId ?? null,
         },
       });
 
@@ -407,12 +435,14 @@ export class HomepageAdminContentService {
           body: input.bodyEn,
           ctaLabel: input.ctaLabelEn,
           ctaUrl: input.ctaUrl,
+          mediaId: input.heroMediaId ?? null,
         },
         update: {
           heading: input.headingEn,
           body: input.bodyEn,
           ctaLabel: input.ctaLabelEn,
           ctaUrl: input.ctaUrl,
+          mediaId: input.heroMediaId ?? null,
         },
       });
 
@@ -474,6 +504,7 @@ export class HomepageAdminContentService {
           value: input.value,
           isActive: input.isActive ?? true,
           sortOrder: input.sortOrder ?? 0,
+          iconMediaId: input.iconMediaId ?? null,
           translations: {
             create: [
               { locale: "ar", label: input.labelAr },
@@ -518,6 +549,7 @@ export class HomepageAdminContentService {
       labelEn: input.labelEn ?? before.translations.find((t: StatTranslationRow) => t.locale === "en")?.label ?? "",
       isActive: input.isActive ?? before.isActive,
       sortOrder: input.sortOrder ?? before.sortOrder,
+      iconMediaId: input.iconMediaId !== undefined ? input.iconMediaId : before.iconMediaId,
     };
     validateStatInput(merged);
 
@@ -538,6 +570,7 @@ export class HomepageAdminContentService {
           value: merged.value,
           isActive: merged.isActive,
           sortOrder: merged.sortOrder,
+          iconMediaId: merged.iconMediaId ?? null,
           translations: {
             upsert: [
               {
@@ -660,6 +693,7 @@ export class HomepageAdminContentService {
         data: {
           isActive: input.isActive ?? true,
           sortOrder: input.sortOrder ?? 0,
+          iconMediaId: input.iconMediaId ?? null,
           translations: {
             create: [
               { locale: "ar", label: input.labelAr },
@@ -706,6 +740,7 @@ export class HomepageAdminContentService {
       labelEn: input.labelEn ?? before.translations.find((t: StatTranslationRow) => t.locale === "en")?.label ?? "",
       isActive: input.isActive ?? before.isActive,
       sortOrder: input.sortOrder ?? before.sortOrder,
+      iconMediaId: input.iconMediaId !== undefined ? input.iconMediaId : before.iconMediaId,
     };
     validateTrustBadgeInput(merged);
 
@@ -717,6 +752,7 @@ export class HomepageAdminContentService {
         data: {
           isActive: merged.isActive,
           sortOrder: merged.sortOrder,
+          iconMediaId: merged.iconMediaId ?? null,
           translations: {
             upsert: [
               {
