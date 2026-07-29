@@ -42,11 +42,21 @@ function toActionState(err: unknown): CategoryActionState {
   return { success: false, error: "حدث خطأ غير متوقع. حاول مرة أخرى." };
 }
 
+/** Categories are now also publicly browsable (src/app/categories) —
+ * revalidate that whole subtree (listing + every detail page) in
+ * addition to the Admin screen, so a save/activate/delete shows up
+ * immediately everywhere, matching the same convention every other
+ * CMS area (Homepage, Static Pages) already follows. */
+function revalidateCategoryRoutes(): void {
+  revalidatePath("/admin/categories");
+  revalidatePath("/categories", "layout");
+}
+
 export async function createCategoryAction(input: CategoryInput): Promise<CategoryActionState> {
   const session = await requirePermission(CATEGORY_MANAGE_PERMISSION);
   try {
     await categoryAdminService.createCategory(input, session.userId);
-    revalidatePath("/admin/categories");
+    revalidateCategoryRoutes();
     return { success: true };
   } catch (err) {
     return toActionState(err);
@@ -60,7 +70,7 @@ export async function updateCategoryAction(
   const session = await requirePermission(CATEGORY_MANAGE_PERMISSION);
   try {
     await categoryAdminService.updateCategory(id, input, session.userId);
-    revalidatePath("/admin/categories");
+    revalidateCategoryRoutes();
     return { success: true };
   } catch (err) {
     return toActionState(err);
@@ -74,7 +84,7 @@ export async function setCategoryActiveAction(
   const session = await requirePermission(CATEGORY_MANAGE_PERMISSION);
   try {
     await categoryAdminService.setCategoryActive(id, isActive, session.userId);
-    revalidatePath("/admin/categories");
+    revalidateCategoryRoutes();
     return { success: true };
   } catch (err) {
     return toActionState(err);
@@ -85,7 +95,7 @@ export async function deleteCategoryAction(id: string): Promise<CategoryActionSt
   const session = await requirePermission(CATEGORY_MANAGE_PERMISSION);
   try {
     await categoryAdminService.deleteCategory(id, session.userId);
-    revalidatePath("/admin/categories");
+    revalidateCategoryRoutes();
     return { success: true };
   } catch (err) {
     return toActionState(err);
