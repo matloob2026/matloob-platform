@@ -64,10 +64,10 @@ export default async function CategoriesPage() {
                 <Link key={category.slug} href={`/categories/${category.slug}`} className="block">
                   <Card className="h-full transition hover:shadow-card-lg">
                     <div className="flex items-start gap-3">
-                      {category.iconUrl ? (
+                      {category.imageUrl || category.iconUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={category.iconUrl}
+                          src={category.imageUrl ?? category.iconUrl ?? undefined}
                           alt=""
                           className="h-11 w-11 flex-shrink-0 rounded-xl object-cover"
                         />

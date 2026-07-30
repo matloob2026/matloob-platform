@@ -26,6 +26,15 @@ export interface RequestFormOption {
   name: string;
 }
 
+/** Categories module completion: parent/child grouping and icon
+ * preview in the Create Request form (see RequestForm.tsx) — reuses
+ * the exact same active-categories read below, just returns two more
+ * already-available fields. */
+export interface CategoryOption extends RequestFormOption {
+  parentId: string | null;
+  iconUrl: string | null;
+}
+
 export interface CityOption extends RequestFormOption {
   countryId: string;
 }
@@ -37,7 +46,7 @@ export interface CurrencyOption {
 }
 
 export interface RequestFormOptions {
-  categories: RequestFormOption[];
+  categories: CategoryOption[];
   countries: RequestFormOption[];
   cities: CityOption[];
   currencies: CurrencyOption[];
@@ -47,7 +56,7 @@ export async function getRequestFormOptions(): Promise<RequestFormOptions> {
   const [categories, countries, cities, currencies] = await Promise.all([
     prisma.category.findMany({
       where: { isActive: true },
-      include: { translations: true },
+      include: { translations: true, icon: { select: { url: true } } },
       orderBy: { sortOrder: "asc" },
     }),
     prisma.country.findMany({
@@ -63,10 +72,19 @@ export async function getRequestFormOptions(): Promise<RequestFormOptions> {
   ]);
 
   return {
-    categories: categories.map((c: { id: string; translations: { locale: string; name: string }[] }) => ({
-      id: c.id,
-      name: resolveName(c.translations),
-    })),
+    categories: categories.map(
+      (c: {
+        id: string;
+        parentId: string | null;
+        translations: { locale: string; name: string }[];
+        icon: { url: string } | null;
+      }) => ({
+        id: c.id,
+        name: resolveName(c.translations),
+        parentId: c.parentId,
+        iconUrl: c.icon?.url ?? null,
+      })
+    ),
     countries: countries.map((c: { id: string; translations: { locale: string; name: string }[] }) => ({
       id: c.id,
       name: resolveName(c.translations),

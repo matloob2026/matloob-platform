@@ -79,6 +79,14 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
 
       <section className="px-4 pt-8 sm:pt-10">
         <div className="mx-auto max-w-3xl rounded-card bg-white p-6 shadow-card sm:p-10">
+          {(category.imageUrl || category.iconUrl) && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={category.imageUrl ?? category.iconUrl ?? undefined}
+              alt={category.name}
+              className="mb-6 max-h-72 w-full rounded-lg object-cover"
+            />
+          )}
           <p className="text-sm text-text-500">
             {category.requestCount.toLocaleString("ar")} طلب منشور في هذا التصنيف حالياً.
           </p>
@@ -90,9 +98,9 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
                 {category.children.map((child) => (
                   <Link key={child.slug} href={`/categories/${child.slug}`} className="block">
                     <div className="flex items-center gap-3 rounded-lg border border-border p-3 transition hover:border-teal-300 hover:bg-teal-50/50">
-                      {child.iconUrl ? (
+                      {child.imageUrl || child.iconUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={child.iconUrl} alt="" className="h-9 w-9 rounded-lg object-cover" />
+                        <img src={child.imageUrl ?? child.iconUrl ?? undefined} alt="" className="h-9 w-9 rounded-lg object-cover" />
                       ) : (
                         <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-teal-100 text-sm font-bold text-teal-700">
                           {child.name.slice(0, 1)}

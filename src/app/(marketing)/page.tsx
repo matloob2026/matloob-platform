@@ -20,6 +20,7 @@ import {
   getPublicMaintenanceMode,
 } from "@/lib/site-settings-public";
 import { resolveSeo, toMetadata } from "@/lib/seo";
+import { getPublicCategories } from "@/lib/category-public-content";
 import { renderHomepageHtml } from "./homepage-render";
 
 const FALLBACK_TITLE = "مطلوب | قولنا إيه اللي محتاجه";
@@ -135,7 +136,7 @@ export default async function HomePage() {
     "utf-8"
   );
 
-  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social] =
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories] =
     await Promise.all([
       getPublicHomepageMainContent(),
       getPublicHomepageStats(),
@@ -144,6 +145,7 @@ export default async function HomePage() {
       getPublicStaticPageMainNavLinks(),
       getActiveKnownPageSlugs(),
       getPublicSiteSocial(),
+      getPublicCategories(),
     ]);
 
   const bodyHtml = renderHomepageHtml(rawHtml, {
@@ -154,6 +156,7 @@ export default async function HomePage() {
     mainNavStaticPageLinks,
     activeKnownPageSlugs,
     social,
+    categories,
   });
 
   return (

@@ -118,9 +118,17 @@ export interface AdminCategoryListItem {
 }
 
 export interface CategoryInput {
-  slug: string;
-  nameAr: string;
-  nameEn: string;
+  /** No longer required from the admin — always auto-generated (see
+   * `generateUniqueSlug` below) when omitted on create. Editing an
+   * existing category never regenerates its slug automatically (that
+   * would break existing public URLs) — passing one explicitly is
+   * still supported for the rare case an admin needs to fix a typo. */
+  slug?: string;
+  /** At least one of nameAr/nameEn is required — never both. See
+   * `resolveNames` below for how the other one is derived when
+   * omitted. */
+  nameAr?: string;
+  nameEn?: string;
   descriptionAr?: string | null;
   descriptionEn?: string | null;
   isActive?: boolean;
@@ -220,19 +228,102 @@ function toAuditSnapshot(category: CategoryRecord): CategoryAuditSnapshot {
   };
 }
 
+/** At least one of nameAr/nameEn is required — never both (see
+ * CategoryInput's docstring). Everything else about a category is
+ * optional/defaulted. */
 function validateInput(input: CategoryInput): void {
-  if (!input.slug || !SLUG_PATTERN.test(input.slug)) {
+  if (!input.nameAr?.trim() && !input.nameEn?.trim()) {
+    throw new CategoryServiceError("أدخل اسم التصنيف بالعربية أو بالإنجليزية على الأقل.", "VALIDATION_ERROR");
+  }
+  if (input.slug !== undefined && (!input.slug || !SLUG_PATTERN.test(input.slug))) {
     throw new CategoryServiceError(
-      "الرابط (Slug) مطلوب ويجب أن يحتوي على أحرف إنجليزية صغيرة وأرقام وشرطات فقط، مثل real-estate.",
+      "الرابط (Slug) يجب أن يحتوي على أحرف إنجليزية صغيرة وأرقام وشرطات فقط، مثل real-estate.",
       "VALIDATION_ERROR"
     );
   }
-  if (!input.nameAr?.trim()) {
-    throw new CategoryServiceError("الاسم بالعربية مطلوب.", "VALIDATION_ERROR");
+}
+
+/** Fills in whichever of nameAr/nameEn is missing so a category never
+ * displays blank in the Arabic-primary public UI: an empty Arabic name
+ * is mirrored from English (the site is Arabic-first, so Arabic must
+ * always have SOME value); an empty English name is simply left unset
+ * — every reader already falls back to whichever locale exists (same
+ * pattern already established for Static Pages' independent-language
+ * support). */
+function resolveNames(nameAr: string | undefined, nameEn: string | undefined): { nameAr: string; nameEn: string } {
+  const ar = nameAr?.trim() ?? "";
+  const en = nameEn?.trim() ?? "";
+  return { nameAr: ar || en, nameEn: en };
+}
+
+/** Best-effort Arabic → Latin transliteration, used only to generate a
+ * readable URL slug when no English name was provided — never shown
+ * to visitors as a "translation". Common letters only; anything
+ * unmapped (diacritics, punctuation) is simply dropped, which is safe
+ * for a slug (see `slugify` below, which discards non-alphanumerics
+ * anyway). */
+const ARABIC_TRANSLITERATION: Record<string, string> = {
+  ا: "a", أ: "a", إ: "a", آ: "a", ب: "b", ت: "t", ث: "th", ج: "j", ح: "h", خ: "kh",
+  د: "d", ذ: "th", ر: "r", ز: "z", س: "s", ش: "sh", ص: "s", ض: "d", ط: "t", ظ: "z",
+  ع: "a", غ: "gh", ف: "f", ق: "q", ك: "k", ل: "l", م: "m", ن: "n", ه: "h", و: "w",
+  ي: "y", ى: "a", ة: "a", ء: "a", ئ: "y", ؤ: "w",
+};
+
+function transliterateArabic(text: string): string {
+  return Array.from(text)
+    .map((ch) => ARABIC_TRANSLITERATION[ch] ?? (/\s/.test(ch) ? " " : ""))
+    .join("");
+}
+
+function slugify(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+/** The one place a category's slug is ever computed from its name —
+ * prefers the English name (a direct, readable slug); falls back to a
+ * best-effort transliteration of the Arabic name when there's no
+ * English name; falls back to a generic "category" base in the
+ * unlikely case neither produces anything slug-safe (e.g. an Arabic
+ * name made entirely of characters outside `ARABIC_TRANSLITERATION`).
+ * Uniqueness (appending `-2`, `-3`, ...) is handled by
+ * `generateUniqueSlug`, which calls this. */
+function baseSlugFromNames(nameAr: string, nameEn: string): string {
+  if (nameEn.trim()) {
+    const fromEn = slugify(nameEn);
+    if (fromEn) return fromEn;
   }
-  if (!input.nameEn?.trim()) {
-    throw new CategoryServiceError("الاسم بالإنجليزية مطلوب.", "VALIDATION_ERROR");
+  if (nameAr.trim()) {
+    const fromAr = slugify(transliterateArabic(nameAr));
+    if (fromAr) return fromAr;
   }
+  return "category";
+}
+
+/** Generates a slug automatically from the category's name(s) and
+ * ensures it's unique, appending `-2`, `-3`, ... as needed — the admin
+ * never types a slug by hand for a new category (see CategoryInput's
+ * docstring). `excludeId` lets an update check uniqueness against
+ * every OTHER category without colliding with itself. */
+async function generateUniqueSlug(nameAr: string, nameEn: string, excludeId?: string): Promise<string> {
+  const base = baseSlugFromNames(nameAr, nameEn);
+  let candidate = base;
+  let suffix = 2;
+  while (
+    await prisma.category.findFirst({
+      where: { slug: candidate, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+      select: { id: true },
+    })
+  ) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  return candidate;
 }
 
 /** Confirms a chosen parent category exists, and — when editing an
@@ -316,9 +407,14 @@ export class CategoryAdminService {
     validateInput(input);
     await validateParent(input.parentId);
 
-    const existing = await prisma.category.findUnique({ where: { slug: input.slug } });
-    if (existing) {
-      throw new CategoryServiceError(`الرابط "${input.slug}" مستخدم بالفعل لتصنيف آخر.`, "DUPLICATE_SLUG");
+    const { nameAr, nameEn } = resolveNames(input.nameAr, input.nameEn);
+    const slug = input.slug?.trim() || (await generateUniqueSlug(nameAr, nameEn));
+
+    if (input.slug?.trim()) {
+      const existing = await prisma.category.findUnique({ where: { slug } });
+      if (existing) {
+        throw new CategoryServiceError(`الرابط "${slug}" مستخدم بالفعل لتصنيف آخر.`, "DUPLICATE_SLUG");
+      }
     }
 
     const hasRealActor = await actorExists(actorId);
@@ -326,7 +422,7 @@ export class CategoryAdminService {
     const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const category = await tx.category.create({
         data: {
-          slug: input.slug,
+          slug,
           isActive: input.isActive ?? true,
           sortOrder: input.sortOrder ?? 0,
           parentId: input.parentId ?? null,
@@ -334,8 +430,8 @@ export class CategoryAdminService {
           imageMediaId: input.imageMediaId ?? null,
           translations: {
             create: [
-              { locale: "ar", name: input.nameAr, description: input.descriptionAr ?? null },
-              { locale: "en", name: input.nameEn, description: input.descriptionEn ?? null },
+              { locale: "ar", name: nameAr, description: input.descriptionAr ?? null },
+              ...(nameEn ? [{ locale: "en", name: nameEn, description: input.descriptionEn ?? null }] : []),
             ],
           },
         },
@@ -350,7 +446,7 @@ export class CategoryAdminService {
             entityType: "Category",
             entityId: category.id,
             before: undefined,
-            after: { slug: category.slug, nameAr: input.nameAr, nameEn: input.nameEn, isActive: category.isActive },
+            after: { slug: category.slug, nameAr, nameEn, isActive: category.isActive },
           },
         });
       } else {
@@ -369,11 +465,19 @@ export class CategoryAdminService {
       throw new CategoryServiceError("التصنيف غير موجود.", "NOT_FOUND");
     }
 
+    const beforeNameAr = before.translations.find((t: TranslationRow) => t.locale === "ar")?.name ?? "";
+    const beforeNameEn = before.translations.find((t: TranslationRow) => t.locale === "en")?.name ?? "";
+    const { nameAr, nameEn } = resolveNames(input.nameAr ?? beforeNameAr, input.nameEn ?? beforeNameEn);
+
     // Merge onto existing values so a partial edit still passes full validation.
+    // The slug is deliberately NOT regenerated from a name change here —
+    // only an explicitly-provided `input.slug` changes it — so editing a
+    // category's name never silently breaks its existing public URL
+    // (see CategoryInput's docstring).
     const merged: CategoryInput = {
       slug: input.slug ?? before.slug,
-      nameAr: input.nameAr ?? before.translations.find((t: TranslationRow) => t.locale === "ar")?.name ?? "",
-      nameEn: input.nameEn ?? before.translations.find((t: TranslationRow) => t.locale === "en")?.name ?? "",
+      nameAr,
+      nameEn,
       descriptionAr:
         input.descriptionAr ?? before.translations.find((t: TranslationRow) => t.locale === "ar")?.description ?? null,
       descriptionEn:
@@ -395,6 +499,12 @@ export class CategoryAdminService {
     }
 
     const hasRealActor = await actorExists(actorId);
+    // English is only touched when there's actually English content to
+    // save — clearing the English field back to empty leaves any
+    // PREVIOUSLY saved English translation untouched rather than
+    // deleting it, the same "never destructive on save" rule Static
+    // Pages already follow for independent-language editing.
+    const hasEnglishContent = Boolean(merged.nameEn?.trim());
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const category = await tx.category.update({
@@ -413,11 +523,15 @@ export class CategoryAdminService {
                 create: { locale: "ar", name: merged.nameAr, description: merged.descriptionAr ?? null },
                 update: { name: merged.nameAr, description: merged.descriptionAr ?? null },
               },
-              {
-                where: { categoryId_locale: { categoryId: id, locale: "en" } },
-                create: { locale: "en", name: merged.nameEn, description: merged.descriptionEn ?? null },
-                update: { name: merged.nameEn, description: merged.descriptionEn ?? null },
-              },
+              ...(hasEnglishContent
+                ? [
+                    {
+                      where: { categoryId_locale: { categoryId: id, locale: "en" } },
+                      create: { locale: "en", name: merged.nameEn, description: merged.descriptionEn ?? null },
+                      update: { name: merged.nameEn, description: merged.descriptionEn ?? null },
+                    },
+                  ]
+                : []),
             ],
           },
         },

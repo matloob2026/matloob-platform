@@ -104,6 +104,7 @@ export interface PublicCategoryChild {
   slug: string;
   name: string;
   iconUrl: string | null;
+  imageUrl: string | null;
   requestCount: number;
 }
 
@@ -137,6 +138,7 @@ export async function getPublicCategoryBySlug(slug: string): Promise<PublicCateg
         include: {
           translations: true,
           icon: { select: { url: true } },
+          image: { select: { url: true } },
           _count: { select: { requests: { where: { deletedAt: null } } } },
         },
         orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
@@ -163,11 +165,13 @@ export async function getPublicCategoryBySlug(slug: string): Promise<PublicCateg
         slug: string;
         translations: TranslationRow[];
         icon: { url: string } | null;
+        image: { url: string } | null;
         _count: { requests: number };
       }) => ({
         slug: child.slug,
         name: resolveName(child.translations),
         iconUrl: child.icon?.url ?? null,
+        imageUrl: child.image?.url ?? null,
         requestCount: child._count.requests,
       })
     ),

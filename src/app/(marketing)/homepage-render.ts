@@ -32,6 +32,7 @@
 
 import type { PublicHomepageMainContent, PublicHomepageStat, PublicTrustBadge } from "@/lib/homepage-public-content";
 import type { PublicStaticPageNavLink } from "@/lib/static-page-public-content";
+import type { PublicCategorySummary } from "@/lib/category-public-content";
 
 function escapeHtml(value: string): string {
   return value
@@ -89,6 +90,15 @@ const TRUST_BADGE_ICONS: Record<string, string> = {
 const TRUST_BADGE_ICON_FALLBACK =
   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>';
 
+// Category grid — Categories module completion. Every category now
+// comes from the database (see getPublicCategories in
+// src/lib/category-public-content.ts). No per-category hardcoded
+// icons or images remain — a category with neither an uploaded image
+// nor an uploaded icon (via the Media Library) falls back to this one
+// single, generic placeholder icon.
+const CATEGORY_ICON_FALLBACK =
+  '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M8 12h8M12 8v8"/></svg>';
+
 /**
  * CMS Checkpoint 06 (final task) — the site's existing hardcoded
  * placeholder links (main nav, mobile nav, and the footer's
@@ -142,6 +152,7 @@ export function renderHomepageHtml(
     mainNavStaticPageLinks: PublicStaticPageNavLink[];
     activeKnownPageSlugs: ReadonlySet<string>;
     social: { x: string | null; instagram: string | null };
+    categories: PublicCategorySummary[];
   }
 ): string {
   let html = bodyHtml;
@@ -259,6 +270,55 @@ export function renderHomepageHtml(
     html = html.replace(
       /<!--CMS:SOCIAL_INSTAGRAM_START-->[\s\S]*?<!--CMS:SOCIAL_INSTAGRAM_END-->/,
       (match) => match.replace('href="#"', `href="${escapeHtml(content.social.instagram!)}"`)
+    );
+  }
+
+  if (content.categories.length > 0) {
+    const optionsHtml = content.categories
+      .map((category) => `<button type="button" class="hero-category-option" onclick="selectHeroCategory(this)">${escapeHtml(category.name)}</button>`)
+      .join("");
+    html = html.replace(
+      /<!--CMS:HERO_CATEGORY_OPTIONS_START-->[\s\S]*?<!--CMS:HERO_CATEGORY_OPTIONS_END-->/,
+      `<!--CMS:HERO_CATEGORY_OPTIONS_START--><div class="hero-category-dropdown" id="heroCategoryDropdown" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:20;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:6px;min-width:190px;max-height:260px;overflow-y:auto">${optionsHtml}</div><!--CMS:HERO_CATEGORY_OPTIONS_END-->`
+    );
+  }
+
+  if (content.categories.length > 0) {
+    const delayClasses = ["reveal-delay-1", "reveal-delay-2", "reveal-delay-3", "reveal-delay-4"];
+    const gridHtml = content.categories
+      .map((category, index) => {
+        const delayClass = delayClasses[index % delayClasses.length];
+        const href = `/categories/${escapeHtml(category.slug)}`;
+        // Fallback chain per this task: real image -> real icon (used
+        // as the card's photo when no image was set) -> a plain
+        // colored placeholder tile — never a fabricated stock photo.
+        const photoUrl = category.imageUrl ?? category.iconUrl;
+        const photoHtml = photoUrl
+          ? `<img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(category.name)}">`
+          : `<div class="cat-card-placeholder" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:${escapeHtml(
+              category.colorHex ?? "#0f766e"
+            )}22;color:${escapeHtml(category.colorHex ?? "#0f766e")}">${CATEGORY_ICON_FALLBACK}</div>`;
+        // The small overlay badge icon always prefers the category's
+        // own uploaded icon; only falls back to the one generic
+        // placeholder icon otherwise — no hardcoded per-category icons.
+        const badgeIcon = category.iconUrl
+          ? `<img src="${escapeHtml(category.iconUrl)}" alt="" width="16" height="16" style="object-fit:cover;border-radius:4px" />`
+          : CATEGORY_ICON_FALLBACK;
+        return (
+          `<a href="${href}" class="cat-card ${delayClass}">` +
+          photoHtml +
+          `<div class="cat-overlay"><span class="cat-ic">${badgeIcon}</span><span>${escapeHtml(category.name)}</span></div>` +
+          `</a>`
+        );
+      })
+      .join("");
+    html = html.replace(
+      /<!--CMS:CATEGORIES_GRID_START-->[\s\S]*?<!--CMS:CATEGORIES_GRID_END-->/,
+      `<!--CMS:CATEGORIES_GRID_START-->${gridHtml}<!--CMS:CATEGORIES_GRID_END-->`
+    );
+    html = html.replace(
+      /<!--CMS:CATEGORIES_SEE_ALL_START-->[\s\S]*?<!--CMS:CATEGORIES_SEE_ALL_END-->/,
+      `<!--CMS:CATEGORIES_SEE_ALL_START--><a href="/categories" class="see-all">عرض الكل ←</a><!--CMS:CATEGORIES_SEE_ALL_END-->`
     );
   }
 

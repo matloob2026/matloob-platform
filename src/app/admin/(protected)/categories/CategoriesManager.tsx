@@ -112,7 +112,7 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
     setFormError(undefined);
     startTransition(async () => {
       const input = {
-        slug: formValues.slug.trim(),
+        slug: formValues.slug.trim() || undefined,
         nameAr: formValues.nameAr.trim(),
         nameEn: formValues.nameEn.trim(),
         descriptionAr: formValues.descriptionAr.trim() || null,
@@ -260,7 +260,14 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
             <TranslationTabs
               render={(locale) => (
                 <div className="space-y-4">
-                  <FormField label={locale === "ar" ? "الاسم (عربي)" : "Name (English)"}>
+                  <FormField
+                    label={locale === "ar" ? "الاسم (عربي)" : "Name (English)"}
+                    hint={
+                      locale === "ar"
+                        ? "أدخل الاسم بالعربية أو بالإنجليزية على الأقل — لا حاجة لكليهما"
+                        : "يكفي إدخال أحد الاسمين — العربي أو الإنجليزي"
+                    }
+                  >
                     <Input
                       placeholder={locale === "ar" ? "مثال: عقارات" : "e.g. Real Estate"}
                       value={locale === "ar" ? formValues.nameAr : formValues.nameEn}
@@ -288,12 +295,19 @@ export function CategoriesManager({ initialCategories }: { initialCategories: Ad
               )}
             />
             <div className="space-y-4">
-              <FormField label="الرابط (Slug)" hint="يُستخدم في رابط الصفحة، أحرف إنجليزية صغيرة وأرقام وشرطات فقط">
+              <FormField
+                label="الرابط (Slug)"
+                hint={
+                  editingId
+                    ? "يُستخدم في رابط الصفحة — لا يتغيّر تلقائياً عند تعديل الاسم حتى لا ينكسر أي رابط منشور"
+                    : "يُنشأ تلقائياً من الاسم عند الحفظ"
+                }
+              >
                 <Input
                   placeholder="real-estate"
                   dir="ltr"
-                  value={formValues.slug}
-                  onChange={(e) => setFormValues((v) => ({ ...v, slug: e.target.value }))}
+                  disabled
+                  value={formValues.slug || "سيتم إنشاؤه تلقائياً من الاسم"}
                 />
               </FormField>
               <FormField label="ترتيب العرض">

@@ -26,6 +26,30 @@
     }, 3200);
   })();
 
+  // Category dropdown — Categories module completion. Populated
+  // server-side with real active categories (see CMS:HERO_CATEGORY_OPTIONS
+  // markers in homepage-body.html / getPublicCategories). Selecting an
+  // option just updates the visible label text, which
+  // goToCreateRequest() below already reads as-is — no change needed
+  // there.
+  function toggleCategoryDropdown(){
+    const menu = document.getElementById('heroCategoryDropdown');
+    if(!menu) return;
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
+  function selectHeroCategory(btn){
+    const label = document.getElementById('categorySelectLabel');
+    if(label) label.textContent = btn.textContent;
+    const menu = document.getElementById('heroCategoryDropdown');
+    if(menu) menu.style.display = 'none';
+  }
+  document.addEventListener('click', function(e){
+    const select = document.getElementById('categorySelect');
+    const menu = document.getElementById('heroCategoryDropdown');
+    if(!select || !menu || menu.style.display === 'none') return;
+    if(!select.contains(e.target)) menu.style.display = 'none';
+  });
+
   // Pressing the CTA transfers the written request straight into the
   // Create Request flow instead of "searching" existing listings.
   function goToCreateRequest(){

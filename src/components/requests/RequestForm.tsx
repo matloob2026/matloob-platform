@@ -48,6 +48,35 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
   const [formError, setFormError] = useState<string | null>(null);
   const [justPublished, setJustPublished] = useState(false);
 
+  // Categories module completion: group the category dropdown by
+  // parent using native <optgroup> (no custom dropdown component, no
+  // redesign) and preview the selected category's uploaded icon next
+  // to the select.
+  const categoryOptions = options.categories;
+  const topLevelCategories = useMemo(
+    () => categoryOptions.filter((c) => !c.parentId),
+    [categoryOptions]
+  );
+  const parentGroups = useMemo(() => {
+    const byParent = new Map<string, (typeof categoryOptions)[number][]>();
+    for (const c of categoryOptions) {
+      if (!c.parentId) continue;
+      const list = byParent.get(c.parentId) ?? [];
+      list.push(c);
+      byParent.set(c.parentId, list);
+    }
+    return Array.from(byParent.entries())
+      .map(([parentId, children]) => {
+        const parent = categoryOptions.find((c) => c.id === parentId);
+        return parent ? ([parent, children] as const) : null;
+      })
+      .filter((entry): entry is readonly [(typeof categoryOptions)[number], (typeof categoryOptions)[number][]] => entry !== null);
+  }, [categoryOptions]);
+  const selectedCategoryIcon = useMemo(
+    () => categoryOptions.find((c) => c.id === values.categoryId)?.iconUrl ?? null,
+    [categoryOptions, values.categoryId]
+  );
+
   const citiesForCountry = useMemo(
     () => options.cities.filter((c) => c.countryId === values.countryId),
     [options.cities, values.countryId]
@@ -191,18 +220,38 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
         </FormField>
 
         <FormField label="التصنيف">
-          <Select
-            value={values.categoryId}
-            onChange={(e) => update("categoryId", e.target.value)}
-            required
-          >
-            <option value="">اختر التصنيف</option>
-            {options.categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
+          <div className="flex items-center gap-2">
+            <Select
+              value={values.categoryId}
+              onChange={(e) => update("categoryId", e.target.value)}
+              required
+              className="flex-1"
+            >
+              <option value="">اختر التصنيف</option>
+              {topLevelCategories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+              {parentGroups.map(([parent, children]) => (
+                <optgroup key={parent.id} label={parent.name}>
+                  {children.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </Select>
+            {selectedCategoryIcon && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={selectedCategoryIcon}
+                alt=""
+                className="h-9 w-9 flex-shrink-0 rounded-lg border border-border object-cover"
+              />
+            )}
+          </div>
         </FormField>
 
         {mode === "create" && (
