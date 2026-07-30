@@ -307,7 +307,7 @@ export function renderHomepageHtml(
         return (
           `<a href="${href}" class="cat-card ${delayClass}">` +
           photoHtml +
-          `<div class="cat-overlay"><span class="cat-ic">${badgeIcon}</span><span>${escapeHtml(category.name)}</span></div>` +
+          `<div class="cat-overlay"><span class="cat-ic">${badgeIcon}</span><span>${escapeHtml(category.name)}</span><span style="font-size:11px;font-weight:600;opacity:.85">${category.requestCount.toLocaleString("ar")} طلب</span></div>` +
           `</a>`
         );
       })

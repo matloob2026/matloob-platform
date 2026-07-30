@@ -42,14 +42,17 @@ function toActionState(err: unknown): CategoryActionState {
   return { success: false, error: "حدث خطأ غير متوقع. حاول مرة أخرى." };
 }
 
-/** Categories are now also publicly browsable (src/app/categories) —
- * revalidate that whole subtree (listing + every detail page) in
- * addition to the Admin screen, so a save/activate/delete shows up
- * immediately everywhere, matching the same convention every other
- * CMS area (Homepage, Static Pages) already follows. */
+/** Categories are now also publicly browsable (src/app/categories) AND
+ * shown on the homepage (src/content/marketing/homepage-body.html's
+ * categories section, injected by
+ * src/app/(marketing)/homepage-render.ts) — revalidate both, plus the
+ * Admin screen, so a save/activate/delete shows up immediately
+ * everywhere. `/` was previously missing here, which is why homepage
+ * category changes never appeared until an unrelated deploy/rebuild. */
 function revalidateCategoryRoutes(): void {
   revalidatePath("/admin/categories");
   revalidatePath("/categories", "layout");
+  revalidatePath("/");
 }
 
 export async function createCategoryAction(input: CategoryInput): Promise<CategoryActionState> {
