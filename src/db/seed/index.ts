@@ -14,8 +14,8 @@
  * "Homepage Content" screen starts out managing the SAME content
  * already live on the homepage, rather than an empty list (see
  * src/content/marketing/homepage-body.html for the values being
- * mirrored here). Admin-user seeding and SiteSetting rows remain out
- * of scope, unchanged from before.
+ * mirrored here). SiteSetting rows remain out of scope, unchanged
+ * from before.
  *
  * CMS Checkpoint 06 (final Static Pages / Public Pages CMS task) adds:
  * the 7 "fixed-slot" Static Pages (about/contact/how-it-works/terms/
@@ -23,9 +23,22 @@
  * placeholder links — see seedStaticPages() below. Re-running the
  * seed never overwrites title/content an admin has since edited
  * through the CMS (only isPublished/extra are kept in sync).
+ *
+ * Administration module adds: `seedAdminAccount()` — guarantees the
+ * platform always has at least one ADMIN account with zero manual
+ * steps. If ANY user with `role: "ADMIN"` already exists, this is a
+ * complete no-op. Otherwise it creates exactly one fixed default
+ * admin (admin@matloob.com / Admin123@ — see `DEFAULT_ADMIN_EMAIL`/
+ * `DEFAULT_ADMIN_PASSWORD` below). No environment variables, no
+ * separate script to run — this executes automatically every time
+ * `npm run db:seed` runs, which is already part of the deploy
+ * pipeline (see vercel.json's buildCommand). This replaces the old
+ * `src/auth/mock-session.ts` demo credentials (deleted), which never
+ * corresponded to a real database row.
  */
 
 import { PrismaClient } from "@prisma/client";
+import { hashPassword } from "@/auth/password";
 
 const prisma = new PrismaClient();
 
@@ -453,6 +466,89 @@ async function seedStaticPages(): Promise<void> {
   }
 }
 
+/**
+ * Administration module — initial admin account. Creates exactly ONE
+ * `User` row with `role: "ADMIN"` the first time this runs, and only
+ * the first time: if a `User` with this email already exists, it is
+ * left completely untouched (no password reset, no field overwrite) —
+ * this seed never mutates an existing account, admin or otherwise.
+ *
+ * Credentials come ONLY from `ADMIN_EMAIL`/`ADMIN_PASSWORD` — there is
+ * no hardcoded fallback. If either is missing, this throws a clear
+ * error instead of silently skipping or inventing a default account,
+ * so a misconfigured deploy fails loudly at seed time rather than
+ * leaving the platform with no way to sign in (exactly the situation
+ * that prompted this fix — see the now-deleted
+ * src/auth/mock-session.ts, which used to hardcode demo credentials
+ * for exactly this purpose).
+ *
+ * Reuses `hashPassword` from src/auth/password.ts (argon2id) — the
+ * exact same hashing every other password in this system goes
+ * through; no separate hashing path for this one account.
+ */
+/**
+ * The one, fixed default administrator this platform ships with. Used
+ * ONLY the very first time — the moment any ADMIN account exists
+ * (this one or any other), `seedAdminAccount()` below does nothing on
+ * every subsequent run. The admin is expected to change this email/
+ * password from the Settings page after first login.
+ */
+const DEFAULT_ADMIN_EMAIL = "admin@matloob.com";
+const DEFAULT_ADMIN_PASSWORD = "Admin123@";
+
+/**
+ * Guarantees the platform always has at least one ADMIN account, with
+ * zero manual steps: this runs automatically every time `npm run
+ * db:seed` runs, which is already part of the deploy pipeline
+ * (`vercel.json`'s buildCommand: "prisma migrate deploy && npm run
+ * db:seed && next build") — so a fresh deployment always ends up with
+ * a working admin login, with nothing to configure or run by hand.
+ *
+ * Checks for ANY existing user with `role: "ADMIN"` — not just one
+ * with this specific email. If one already exists (this default
+ * account or any other admin created since), this is a complete
+ * no-op: no field on any existing account is ever touched. Only when
+ * NO admin exists at all does it create this one, fixed default
+ * account.
+ *
+ * Reuses `hashPassword` from src/auth/password.ts (argon2id) — the
+ * exact same hashing every other password in this system goes
+ * through.
+ */
+async function seedAdminAccount(): Promise<void> {
+  const existingAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+  if (existingAdmin) {
+    console.log(`  An ADMIN account already exists (${existingAdmin.email ?? existingAdmin.id}) — skipping.`);
+    return;
+  }
+
+  // Defensive: email is unique, so if some other (non-admin) account
+  // already happens to hold this exact address, creating a new row
+  // would fail outright — never overwrite that account either.
+  const emailTaken = await prisma.user.findUnique({ where: { email: DEFAULT_ADMIN_EMAIL } });
+  if (emailTaken) {
+    console.log(
+      `  A non-admin account already uses ${DEFAULT_ADMIN_EMAIL} — skipping default admin creation to avoid a conflict.`
+    );
+    return;
+  }
+
+  const passwordHash = await hashPassword(DEFAULT_ADMIN_PASSWORD);
+
+  await prisma.user.create({
+    data: {
+      email: DEFAULT_ADMIN_EMAIL,
+      passwordHash,
+      role: "ADMIN",
+      status: "ACTIVE",
+      emailVerifiedAt: new Date(),
+      profile: { create: { displayName: "مدير المنصة" } },
+    },
+  });
+
+  console.log(`  Created default admin account: ${DEFAULT_ADMIN_EMAIL}`);
+}
+
 async function main(): Promise<void> {
   console.log("Seeding currencies...");
   const currencyIdByCode = await seedCurrencies();
@@ -468,6 +564,9 @@ async function main(): Promise<void> {
 
   console.log("Seeding static pages (about, contact, how-it-works, terms, privacy, faq, help-center)...");
   await seedStaticPages();
+
+  console.log("Seeding initial admin account...");
+  await seedAdminAccount();
 
   console.log("Seed complete.");
 }
