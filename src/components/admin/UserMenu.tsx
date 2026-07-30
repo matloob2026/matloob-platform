@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Link from "next/link";
 import { ChevronDown, LogOut, User as UserIcon } from "lucide-react";
 import { logoutAction } from "@/app/admin/login/actions";
 
@@ -44,9 +45,13 @@ export function UserMenu({ name, email, role }: UserMenuProps) {
             <p className="text-sm font-bold text-navy-950">{name}</p>
             <p className="truncate text-xs text-text-400">{email}</p>
           </div>
-          <button className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-700 transition hover:bg-surface-muted">
+          <Link
+            href="/admin/profile"
+            onClick={() => setOpen(false)}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-700 transition hover:bg-surface-muted"
+          >
             <UserIcon className="h-4 w-4" /> الملف الشخصي
-          </button>
+          </Link>
           <form action={logoutAction}>
             <button
               type="submit"

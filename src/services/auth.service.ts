@@ -459,6 +459,35 @@ export class AuthService {
       }),
     ]);
   }
+  /**
+   * Self-service password change while already authenticated (the
+   * Admin Profile page's "Change Password" — distinct from
+   * `resetPassword`'s token-based flow for a forgotten password).
+   * Requires the CURRENT password, same as any standard account
+   * settings page. Also revokes every other standing session for this
+   * user, same security practice `resetPassword` already applies.
+   */
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<void> {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      throw new AuthError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`, "WEAK_PASSWORD");
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.passwordHash) {
+      throw new AuthError("Incorrect current password.", "INVALID_CREDENTIALS");
+    }
+
+    const valid = await verifyPassword(user.passwordHash, currentPassword);
+    if (!valid) {
+      throw new AuthError("Incorrect current password.", "INVALID_CREDENTIALS");
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+      prisma.session.deleteMany({ where: { userId } }),
+    ]);
+  }
 }
 
 export const authService = new AuthService();

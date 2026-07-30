@@ -2,7 +2,7 @@ import { Search } from "lucide-react";
 import { NotificationBell } from "./NotificationBell";
 import { UserMenu } from "./UserMenu";
 import { MobileSidebarToggle } from "./MobileSidebarToggle";
-import type { AdminSession } from "@/auth/mock-session";
+import type { AdminSession } from "@/auth/session";
 
 interface AdminTopbarProps {
   session: AdminSession;

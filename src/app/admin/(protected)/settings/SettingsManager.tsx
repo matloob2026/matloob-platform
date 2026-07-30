@@ -255,7 +255,142 @@ function BehaviorTab({ initial }: { initial: AllSiteSettings["behavior"] }) {
   );
 }
 
-export function SettingsManager({ initialSettings }: { initialSettings: AllSiteSettings }) {
+/** Administration module: company/legal details — distinct from the
+ * "Contact" tab (how visitors REACH the business) and "Brand"
+ * (public-facing name). Nothing in the codebase reads these back out
+ * yet; purely informational and safe to leave blank. */
+function CompanyTab({ initial }: { initial: AllSiteSettings["company"] }) {
+  const { values, setValues, isPending, error, save, reset } = useGroupForm("company", initial);
+  return (
+    <Card>
+      <h3 className="mb-4 font-display text-lg font-bold text-navy-950">الشركة</h3>
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <FormField label="الاسم القانوني للشركة">
+          <Input value={values.legalName} onChange={(e) => setValues((v) => ({ ...v, legalName: e.target.value }))} />
+        </FormField>
+        <FormField label="رقم السجل التجاري">
+          <Input
+            dir="ltr"
+            value={values.registrationNumber}
+            onChange={(e) => setValues((v) => ({ ...v, registrationNumber: e.target.value }))}
+          />
+        </FormField>
+        <FormField label="الرقم الضريبي">
+          <Input dir="ltr" value={values.taxNumber} onChange={(e) => setValues((v) => ({ ...v, taxNumber: e.target.value }))} />
+        </FormField>
+      </div>
+      <GroupSaveBar isSaving={isPending} onSave={save} onReset={reset} />
+    </Card>
+  );
+}
+
+/** Administration module: the one genuinely safe, admin-only security
+ * knob — how long an admin session stays valid before requiring
+ * re-login (see src/auth/tokens.ts's `generateAdminSessionToken`).
+ * The end-user-facing password-length policy deliberately stays a
+ * code constant (`MIN_PASSWORD_LENGTH` in src/auth/password.ts) since
+ * it affects the whole user base, not just admin accounts. */
+function SecurityTab({ initial }: { initial: AllSiteSettings["security"] }) {
+  const { values, setValues, isPending, error, save, reset } = useGroupForm("security", initial);
+  return (
+    <Card>
+      <h3 className="mb-4 font-display text-lg font-bold text-navy-950">الأمان</h3>
+      {error && (
+        <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-700">
+          {error}
+        </div>
+      )}
+      <div className="space-y-4">
+        <FormField
+          label="مدة صلاحية جلسة تسجيل الدخول (بالساعات)"
+          hint="بعد انتهاء هذه المدة، سيحتاج المشرف لتسجيل الدخول مرة أخرى"
+        >
+          <Input
+            type="number"
+            dir="ltr"
+            className="w-32"
+            min={1}
+            max={72}
+            value={values.sessionTimeoutHours}
+            onChange={(e) => setValues((v) => ({ ...v, sessionTimeoutHours: Number(e.target.value) || 8 }))}
+          />
+        </FormField>
+      </div>
+      <GroupSaveBar isSaving={isPending} onSave={save} onReset={reset} />
+    </Card>
+  );
+}
+
+/** Administration module: read-only status for Email/Upload/Storage —
+ * these stay environment-variable/code-constant configuration
+ * (RESEND_API_KEY/RESEND_FROM_EMAIL, MAX_IMAGE_BYTES,
+ * ALLOWED_MIME_TYPES) rather than live-editable database settings,
+ * since they're shared by end-user-facing flows (every password reset
+ * email, every image upload site-wide) — a mistake in a
+ * database-driven version would break live user functionality, not
+ * just an admin screen. This tab surfaces their CURRENT status for
+ * visibility without offering to edit them here. */
+function IntegrationsStatusTab({
+  emailConfigured,
+  emailFromAddress,
+  maxUploadMb,
+  allowedUploadTypes,
+}: {
+  emailConfigured: boolean;
+  emailFromAddress: string | null;
+  maxUploadMb: number;
+  allowedUploadTypes: string;
+}) {
+  return (
+    <Card>
+      <h3 className="mb-4 font-display text-lg font-bold text-navy-950">البريد الإلكتروني والرفع والتخزين</h3>
+      <p className="mb-4 text-sm text-text-500">
+        هذه الإعدادات تُدار حالياً عبر متغيرات البيئة (Environment Variables) في الخادم لأنها تؤثر مباشرة على
+        وظائف حساسة يستخدمها كل المستخدمين (رسائل إعادة تعيين كلمة المرور، رفع كل الصور في المنصة) — لذلك تُعرض هنا
+        للاطلاع فقط دون إمكانية التعديل من هذه الشاشة.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-lg border border-border p-4">
+          <p className="text-xs text-text-400">مزوّد البريد الإلكتروني</p>
+          <p className="mt-1 font-bold text-navy-950">{emailConfigured ? "مُفعّل" : "غير مُفعّل"}</p>
+          {emailFromAddress && (
+            <p className="mt-1 text-xs text-text-400" dir="ltr">
+              {emailFromAddress}
+            </p>
+          )}
+        </div>
+        <div className="rounded-lg border border-border p-4">
+          <p className="text-xs text-text-400">الحد الأقصى لحجم الصورة</p>
+          <p className="mt-1 font-bold text-navy-950">{maxUploadMb} ميغابايت</p>
+        </div>
+        <div className="rounded-lg border border-border p-4 sm:col-span-2">
+          <p className="text-xs text-text-400">أنواع الصور المسموح رفعها</p>
+          <p className="mt-1 font-bold text-navy-950" dir="ltr">
+            {allowedUploadTypes}
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export function SettingsManager({
+  initialSettings,
+  integrationsStatus,
+}: {
+  initialSettings: AllSiteSettings;
+  integrationsStatus: {
+    emailConfigured: boolean;
+    emailFromAddress: string | null;
+    maxUploadMb: number;
+    allowedUploadTypes: string;
+  };
+}) {
   return (
     <Tabs
       items={[
@@ -263,6 +398,13 @@ export function SettingsManager({ initialSettings }: { initialSettings: AllSiteS
         { key: "contact", label: "التواصل", content: <ContactTab initial={initialSettings.contact} /> },
         { key: "social", label: "روابط التواصل الاجتماعي", content: <SocialTab initial={initialSettings.social} /> },
         { key: "behavior", label: "إعدادات الموقع", content: <BehaviorTab initial={initialSettings.behavior} /> },
+        { key: "company", label: "الشركة", content: <CompanyTab initial={initialSettings.company} /> },
+        { key: "security", label: "الأمان", content: <SecurityTab initial={initialSettings.security} /> },
+        {
+          key: "integrations",
+          label: "البريد والرفع والتخزين",
+          content: <IntegrationsStatusTab {...integrationsStatus} />,
+        },
       ]}
     />
   );

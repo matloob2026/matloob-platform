@@ -25,6 +25,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard,
   Users,
+  ShieldCheck,
+  History,
   ClipboardList,
   HandCoins,
   LayoutGrid,
@@ -64,6 +66,8 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
     title: "العمليات",
     items: [
       { label: "المستخدمون", href: "/admin/users", icon: Users, permission: "users:view" },
+      { label: "الأدوار والصلاحيات", href: "/admin/roles", icon: ShieldCheck, permission: "roles:view" },
+      { label: "سجل التدقيق", href: "/admin/audit-log", icon: History, permission: "audit-log:view" },
       { label: "الطلبات", href: "/admin/requests", icon: ClipboardList, permission: "requests:view" },
       { label: "العروض", href: "/admin/offers", icon: HandCoins, permission: "offers:view" },
     ],

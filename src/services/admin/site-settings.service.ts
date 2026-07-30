@@ -101,12 +101,37 @@ export interface SeoGlobalSettings {
   schemaJsonLd: string;
 }
 
+/** Administration module addition. `sessionTimeoutHours` is read by
+ * src/auth/tokens.ts's admin session generator (falls back to the
+ * previous fixed 8h if unset) — the one genuinely safe,
+ * admin-facing "security" knob to expose without touching the
+ * end-user-facing password/registration validation rules
+ * (`MIN_PASSWORD_LENGTH` in src/auth/password.ts), which stay
+ * code-level constants since they affect the whole user base, not
+ * just admin accounts. */
+export interface SecuritySettings {
+  sessionTimeoutHours: number;
+}
+
+/** Administration module addition — company/legal details distinct
+ * from `ContactSettings` (which is about how visitors REACH the
+ * business) and `BrandSettings` (public-facing name/tagline). Purely
+ * informational; nothing in the codebase currently reads these back
+ * out, so leaving them blank never breaks anything. */
+export interface CompanySettings {
+  legalName: string;
+  registrationNumber: string;
+  taxNumber: string;
+}
+
 export interface AllSiteSettings {
   brand: BrandSettings;
   contact: ContactSettings;
   social: SocialSettings;
   behavior: BehaviorSettings;
   seo: SeoGlobalSettings;
+  security: SecuritySettings;
+  company: CompanySettings;
 }
 
 const DEFAULTS: AllSiteSettings = {
@@ -123,6 +148,8 @@ const DEFAULTS: AllSiteSettings = {
   social: { facebook: "", instagram: "", tiktok: "", x: "", linkedin: "", youtube: "" },
   behavior: { maintenanceMode: false, defaultPageSize: 20 },
   seo: { defaultKeywords: "", robotsTxtCustom: "", schemaJsonLd: "" },
+  security: { sessionTimeoutHours: 8 },
+  company: { legalName: "", registrationNumber: "", taxNumber: "" },
 };
 
 interface FieldDef<T> {
@@ -179,12 +206,24 @@ const SEO_GLOBAL_FIELDS: FieldDef<SeoGlobalSettings>[] = [
   { key: "schemaJsonLd", settingKey: "schema_json_ld", valueType: "STRING" },
 ];
 
+const SECURITY_FIELDS: FieldDef<SecuritySettings>[] = [
+  { key: "sessionTimeoutHours", settingKey: "session_timeout_hours", valueType: "NUMBER" },
+];
+
+const COMPANY_FIELDS: FieldDef<CompanySettings>[] = [
+  { key: "legalName", settingKey: "legal_name", valueType: "STRING" },
+  { key: "registrationNumber", settingKey: "registration_number", valueType: "STRING" },
+  { key: "taxNumber", settingKey: "tax_number", valueType: "STRING" },
+];
+
 const GROUPS: { group: keyof AllSiteSettings; fields: ErasedFieldDef[] }[] = [
   { group: "brand", fields: BRAND_FIELDS },
   { group: "contact", fields: CONTACT_FIELDS },
   { group: "social", fields: SOCIAL_FIELDS },
   { group: "behavior", fields: BEHAVIOR_FIELDS },
   { group: "seo", fields: SEO_GLOBAL_FIELDS },
+  { group: "security", fields: SECURITY_FIELDS },
+  { group: "company", fields: COMPANY_FIELDS },
 ];
 
 function parseValue(raw: string, valueType: ErasedFieldDef["valueType"]): unknown {

@@ -267,6 +267,8 @@ model User {
   conversationParticipants ConversationParticipant[]
   auditLogs     AdminAuditLog[]     @relation("AuditActor")
   blogPosts     BlogPost[]          @relation("BlogPostAuthor")
+  customRoleId  String?
+  customRole    AdminRole?          @relation(fields: [customRoleId], references: [id])
 
   @@index([role, status])
   @@map("users")
@@ -843,4 +845,48 @@ model AdminAuditLog {
 
   @@index([entityType, entityId])
   @@map("admin_audit_logs")
+}
+
+// =====================================================================
+// ADMIN ROLES (Administration module) — an ADDITIVE layer on top of
+// the existing `UserRole` enum (ADMIN/MODERATOR) and the hardcoded
+// ADMIN_PERMISSIONS matrix (src/auth/permissions.ts), NOT a
+// replacement for either:
+//   - `UserRole.ADMIN` always keeps its full wildcard access,
+//     unconditionally — this table can never grant or restrict an
+//     ADMIN account; it exists purely so a MODERATOR-tier account can
+//     be granted specific EXTRA permissions beyond MODERATOR's
+//     hardcoded baseline list, without touching that baseline or the
+//     ADMIN wildcard path. See src/auth/permissions.ts's
+//     `hasPermission` for exactly how the two layers combine.
+//   - permission STRINGS themselves stay fixed (they're checked as
+//     compile-time constants — e.g. `CATEGORY_MANAGE_PERMISSION` —
+//     throughout the codebase; a permission string with no matching
+//     `requirePermission(...)` call anywhere would be a no-op), so
+//     this only makes the ROLE → PERMISSION MAPPING dynamic, not the
+//     catalog of permissions that exist.
+// =====================================================================
+
+model AdminRole {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  permissions AdminRolePermission[]
+  users       User[]
+
+  @@map("admin_roles")
+}
+
+model AdminRolePermission {
+  id         String @id @default(uuid())
+  roleId     String
+  permission String
+
+  role AdminRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permission])
+  @@map("admin_role_permissions")
 }

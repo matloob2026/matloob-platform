@@ -52,6 +52,14 @@ export function generatePasswordResetToken(): GeneratedToken {
   return generateToken(PASSWORD_RESET_TOKEN_TTL_MS);
 }
 
+/** `ttlHours` is read from `SecuritySettings.sessionTimeoutHours`
+ * (src/services/admin/site-settings.service.ts) by the caller
+ * (src/auth/session.ts's `createAdminSession`) — defaults to the
+ * original fixed 8h if that setting hasn't been changed. */
+export function generateAdminSessionToken(ttlHours = 8): GeneratedToken {
+  return generateToken(ttlHours * 60 * 60 * 1000);
+}
+
 /**
  * Hash a raw token received from the client (query param / form body) so
  * it can be looked up against the stored `tokenHash` column. Callers

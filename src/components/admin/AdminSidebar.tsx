@@ -10,16 +10,24 @@ import { useMobileNav } from "./MobileNavContext";
 
 interface AdminSidebarProps {
   role: AdminRole;
+  /** Extra permissions granted via the session's assigned custom
+   * `AdminRole` (Administration module) — resolved once, server-side,
+   * by the protected layout (see prisma/schema.prisma's
+   * `AdminRolePermission`). Empty by default, which is the exact same
+   * nav visibility as before this module existed. */
+  extraPermissions?: readonly string[];
 }
 
-export function AdminSidebar({ role }: AdminSidebarProps) {
+export function AdminSidebar({ role, extraPermissions = [] }: AdminSidebarProps) {
   const pathname = usePathname();
   const { isOpen, close } = useMobileNav();
   // Groups (and section headers) whose items are all hidden for this role
   // simply disappear — a MODERATOR never sees an empty "CMS" heading.
   const visibleGroups = ADMIN_NAV_GROUPS.map((group) => ({
     ...group,
-    items: group.items.filter((item) => hasPermission(role, item.permission)),
+    items: group.items.filter(
+      (item) => hasPermission(role, item.permission) || extraPermissions.includes(item.permission)
+    ),
   })).filter((group) => group.items.length > 0);
 
   return (
