@@ -147,6 +147,22 @@ export interface CategoryInput {
 
 export type UpdateCategoryInput = Partial<CategoryInput>;
 
+/** `CategoryInput.slug`/`nameAr`/`nameEn` are optional on the PUBLIC
+ * input type (an admin may omit any of them — see CategoryInput's
+ * docstring). Once `updateCategory` below merges an update onto the
+ * existing category, though, all three are always resolved to a real
+ * string (falling back to the existing row's value, or to
+ * `resolveNames`'s guaranteed non-empty `nameAr`) — this narrower type
+ * captures that guarantee so Prisma's `create`/`update` calls (whose
+ * `name`/`slug` columns are required, non-nullable strings) never see
+ * `string | undefined` from TypeScript's point of view, even though
+ * `CategoryInput` itself declares them optional. */
+type ResolvedCategoryInput = Omit<CategoryInput, "slug" | "nameAr" | "nameEn"> & {
+  slug: string;
+  nameAr: string;
+  nameEn: string;
+};
+
 // ---------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------
@@ -474,7 +490,7 @@ export class CategoryAdminService {
     // only an explicitly-provided `input.slug` changes it — so editing a
     // category's name never silently breaks its existing public URL
     // (see CategoryInput's docstring).
-    const merged: CategoryInput = {
+    const merged: ResolvedCategoryInput = {
       slug: input.slug ?? before.slug,
       nameAr,
       nameEn,
@@ -504,7 +520,7 @@ export class CategoryAdminService {
     // PREVIOUSLY saved English translation untouched rather than
     // deleting it, the same "never destructive on save" rule Static
     // Pages already follow for independent-language editing.
-    const hasEnglishContent = Boolean(merged.nameEn?.trim());
+    const hasEnglishContent = Boolean(merged.nameEn.trim());
 
     const updated = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const category = await tx.category.update({
