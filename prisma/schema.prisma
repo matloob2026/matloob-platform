@@ -266,6 +266,7 @@ model User {
   reportsAgainst Report[]           @relation("ReportedUser")
   conversationParticipants ConversationParticipant[]
   auditLogs     AdminAuditLog[]     @relation("AuditActor")
+  blogPosts     BlogPost[]          @relation("BlogPostAuthor")
 
   @@index([role, status])
   @@map("users")
@@ -386,6 +387,7 @@ model Category {
   icon         Media?                @relation("CategoryIcon", fields: [iconMediaId], references: [id])
   image        Media?                @relation("CategoryImage", fields: [imageMediaId], references: [id])
   requests     Request[]
+  blogPosts    BlogPost[]
 
   @@index([isActive, sortOrder])
   @@map("categories")
@@ -625,6 +627,8 @@ model Media {
   homepageStats   HomepageStat[]
   trustBadges     TrustBadge[]
   seoSettings     SeoSetting[]
+  blogPostFeaturedImages BlogPost[] @relation("BlogPostFeaturedImage")
+  blogPostGalleries      BlogPost[] @relation("BlogPostGallery")
 
   @@index([ownerType])
   @@map("media")
@@ -742,6 +746,60 @@ model SocialLink {
   sortOrder Int      @default(0)
 
   @@map("social_links")
+}
+
+// =====================================================================
+// BLOG (articles) — reuses the existing Category model for taxonomy,
+// the existing Media model for featured image + gallery (gallery
+// mirrors the exact many-to-many pattern Request.media already uses —
+// see "RequestMedia" below), the existing User model for authorship,
+// and the existing SeoSetting model for per-article SEO
+// (entityType: "blog_post", entityId: BlogPost.id) — no new SEO
+// structure. Translations follow the exact same per-locale pattern as
+// CategoryTranslation/PageContent (independent Arabic/English, a
+// locale row is optional so a post can exist in just one language).
+// =====================================================================
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model BlogPost {
+  id              String         @id @default(uuid())
+  slug            String         @unique
+  categoryId      String?
+  featuredMediaId String?
+  authorId        String?
+  status          BlogPostStatus @default(DRAFT)
+  publishedAt     DateTime?
+  sortOrder       Int            @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  category      Category?             @relation(fields: [categoryId], references: [id])
+  featuredMedia Media?                @relation("BlogPostFeaturedImage", fields: [featuredMediaId], references: [id])
+  author        User?                 @relation("BlogPostAuthor", fields: [authorId], references: [id])
+  gallery       Media[]               @relation("BlogPostGallery")
+  translations  BlogPostTranslation[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId])
+  @@map("blog_posts")
+}
+
+model BlogPostTranslation {
+  id      String  @id @default(uuid())
+  postId  String
+  locale  String
+  title   String
+  excerpt String?
+  content String?
+
+  post BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, locale])
+  @@map("blog_post_translations")
 }
 
 // =====================================================================

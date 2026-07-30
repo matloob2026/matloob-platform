@@ -14,11 +14,11 @@
  *
  * Every "إدارة المحتوى" (Content Management / CMS) item reuses an
  * existing page and existing data model wherever one already exists
- * (Homepage Content, Hero Section, Categories, Countries, Cities) —
- * see each item's comment. Items with no existing page yet (Currencies,
- * Static Pages, Blog/Articles) get a placeholder screen that states
- * what it will manage and reuses the same "قريباً" pattern already
- * used by the AI screen, rather than a fake/mock management UI.
+ * (Homepage Content, Hero Section, Categories, Countries, Cities,
+ * Currencies, Static Pages, Blog/Articles). Items with no existing
+ * page yet get a placeholder screen that states what it will manage
+ * and reuses the same "قريباً" pattern already used by the AI screen,
+ * rather than a fake/mock management UI.
  */
 
 import type { LucideIcon } from "lucide-react";

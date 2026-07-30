@@ -96,6 +96,15 @@ export const SEO_MANAGE_PERMISSION = "seo:manage";
  */
 export const MEDIA_MANAGE_PERMISSION = "media:manage";
 
+/**
+ * Blog module: write actions (create/update/publish/delete) require
+ * `blog:manage` — `blog:view` (already ADMIN only since Checkpoint 01
+ * — the nav link/placeholder page already used this string) continues
+ * to gate the sidebar link and read access. Same pattern as every
+ * other CMS area above.
+ */
+export const BLOG_MANAGE_PERMISSION = "blog:manage";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);

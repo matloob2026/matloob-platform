@@ -1,28 +1,30 @@
-import { Newspaper } from "lucide-react";
 import { requirePermission } from "@/auth/guards";
-import { CmsPlaceholder } from "@/components/admin/CmsPlaceholder";
+import { blogAdminService } from "@/services/admin/blog.service";
+import { categoryAdminService } from "@/services/admin/category.service";
+import { BlogManager } from "./BlogManager";
 
 /**
- * CMS foundation placeholder (Checkpoint 01) — Blog / Articles. Like
- * Static Pages, this needs its own model (title, slug, body, author,
- * published state, per-article SEO) that doesn't exist in the schema
- * yet — deliberately not introduced in this checkpoint, which is
- * scoped to CMS navigation/architecture + the Categories screen only.
+ * Blog CMS management — real, database-backed screen. Replaces the
+ * Checkpoint 01 `CmsPlaceholder` that lived at this same route (see
+ * src/services/admin/blog.service.ts for the full architecture note:
+ * reuses Category/Media/User/SeoSetting, no parallel models).
+ *
+ * `requirePermission` ensures only an authenticated ADMIN session
+ * reaches this page (the "blog:view" permission is not granted to
+ * MODERATOR — see src/auth/permissions.ts), on top of the session
+ * check every admin route already gets from the protected layout.
+ *
+ * Categories are fetched here too (reusing the EXISTING
+ * `CategoryAdminService` — no second "list categories" query) so the
+ * Blog form's category selector has real data to choose from, exactly
+ * the same way other CMS screens reuse each other's existing reads.
  */
 export default async function AdminBlogPage() {
   await requirePermission("blog:view");
+  const [posts, categories] = await Promise.all([
+    blogAdminService.listPosts(),
+    categoryAdminService.listCategories(),
+  ]);
 
-  return (
-    <CmsPlaceholder
-      title="المدونة / المقالات"
-      description="نشر مقالات ومحتوى تسويقي مرتبط بالمنصة"
-      icon={Newspaper}
-      plannedControls={[
-        "إنشاء/تعديل/حذف مقالات بعنوان وصورة غلاف ومحتوى",
-        "حالة المسودة والنشر لكل مقال",
-        "تصنيف المقالات ودعم اللغتين",
-        "ربط كل مقال بإعدادات SEO الخاصة به (عبر جدول SeoSetting الموجود)",
-      ]}
-    />
-  );
+  return <BlogManager initialPosts={posts} categories={categories} />;
 }
