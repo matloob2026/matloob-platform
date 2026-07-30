@@ -37,14 +37,17 @@ function toActionState(err: unknown): BlogActionState {
   return { success: false, error: "حدث خطأ غير متوقع. حاول مرة أخرى." };
 }
 
-/** Blog posts are also publicly browsable (src/app/blog) — revalidate
- * that whole subtree (listing + every article page) in addition to
- * the Admin screen, so a save/publish/delete shows up immediately
- * everywhere, matching the exact convention Categories/Static Pages/
- * Homepage already follow. */
+/** Blog posts are also publicly browsable (src/app/blog) AND shown on
+ * the homepage (src/content/marketing/homepage-body.html's "أحدث
+ * المقالات" section, injected by
+ * src/app/(marketing)/homepage-render.ts) — revalidate both, plus the
+ * Admin screen, so a save/publish/delete shows up immediately
+ * everywhere. `/` was previously missing here — the same
+ * cache-invalidation gap already found and fixed once for Categories. */
 function revalidateBlogRoutes(): void {
   revalidatePath("/admin/blog");
   revalidatePath("/blog", "layout");
+  revalidatePath("/");
 }
 
 export async function listBlogPostsAction(filters?: ListBlogPostsFilters) {
