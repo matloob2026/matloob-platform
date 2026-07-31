@@ -39,11 +39,11 @@ export function UserMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2.5 rounded-full border border-border bg-white py-1 pl-1.5 pr-4 shadow-sm transition-all hover:shadow-md"
+        className="flex items-center rounded-full border border-border bg-white p-1 shadow-sm transition-all hover:shadow-md"
         aria-haspopup="true"
         aria-expanded={open}
+        aria-label={name}
       >
-        <span className="max-w-[140px] truncate text-sm font-semibold text-navy-950">{name}</span>
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- small fixed-size avatar in a dropdown trigger; next/image's overhead isn't warranted here
           <img

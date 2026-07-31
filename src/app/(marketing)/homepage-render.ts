@@ -33,7 +33,6 @@
 import type { PublicHomepageMainContent, PublicHomepageStat, PublicTrustBadge } from "@/lib/homepage-public-content";
 import type { PublicStaticPageNavLink } from "@/lib/static-page-public-content";
 import type { PublicCategorySummary } from "@/lib/category-public-content";
-import type { PublicBlogPostSummary } from "@/lib/blog-public-content";
 import type { RequestSummary } from "@/types/domain";
 
 function escapeHtml(value: string): string {
@@ -164,7 +163,6 @@ export function renderHomepageHtml(
     activeKnownPageSlugs: ReadonlySet<string>;
     social: { x: string | null; instagram: string | null };
     categories: PublicCategorySummary[];
-    blogPosts: PublicBlogPostSummary[];
     featuredRequests: RequestSummary[];
     hasMoreRequests: boolean;
     /** Favorites — only meaningful for a signed-in visitor; the heart
@@ -371,40 +369,6 @@ export function renderHomepageHtml(
     /<!--CMS:REQUESTS_SEE_ALL_START-->[\s\S]*?<!--CMS:REQUESTS_SEE_ALL_END-->/,
     `<!--CMS:REQUESTS_SEE_ALL_START-->${requestsSeeAllHtml}<!--CMS:REQUESTS_SEE_ALL_END-->`
   );
-
-  if (content.blogPosts.length > 0) {
-    const delayClasses = ["reveal-delay-1", "reveal-delay-2", "reveal-delay-3"];
-    const gridHtml = content.blogPosts
-      .slice(0, 3)
-      .map((post, index) => {
-        const delayClass = delayClasses[index % delayClasses.length];
-        const href = `/blog/${escapeHtml(post.slug)}`;
-        const dateLabel = post.publishedAt
-          ? new Date(post.publishedAt).toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" })
-          : null;
-        const thumbHtml = post.featuredImageUrl
-          ? `<img src="${escapeHtml(post.featuredImageUrl)}" alt="${escapeHtml(post.title)}">`
-          : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#0f766e22;color:#0f766e">${CATEGORY_ICON_FALLBACK}</div>`;
-        return (
-          `<div class="req-card ${delayClass}">` +
-          `<div class="req-thumb">${thumbHtml}${
-            post.categoryName ? `<span class="req-badge">${escapeHtml(post.categoryName)}</span>` : ""
-          }</div>` +
-          `<div class="req-body"><h3>${escapeHtml(post.title)}</h3>` +
-          (post.excerpt ? `<p>${escapeHtml(post.excerpt)}</p>` : "") +
-          (dateLabel
-            ? `<div class="req-meta-row"><span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg> ${escapeHtml(dateLabel)}</span></div>`
-            : "") +
-          `<a href="${href}" class="see-all">اقرأ المزيد ←</a>` +
-          `</div></div>`
-        );
-      })
-      .join("");
-    html = html.replace(
-      /<!--CMS:BLOG_GRID_START-->[\s\S]*?<!--CMS:BLOG_GRID_END-->/,
-      `<!--CMS:BLOG_GRID_START-->${gridHtml}<!--CMS:BLOG_GRID_END-->`
-    );
-  }
 
   return html;
 }

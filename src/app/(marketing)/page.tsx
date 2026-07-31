@@ -21,7 +21,6 @@ import {
 } from "@/lib/site-settings-public";
 import { resolveSeo, toMetadata } from "@/lib/seo";
 import { getPublicCategories } from "@/lib/category-public-content";
-import { getPublicBlogListing } from "@/lib/blog-public-content";
 import { requestService } from "@/services/request.service";
 import { favoriteService } from "@/services/favorite.service";
 import { auth } from "@/auth/auth";
@@ -142,7 +141,7 @@ export default async function HomePage() {
 
   const session = await auth();
 
-  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, blogListing, requestsResult] =
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, requestsResult] =
     await Promise.all([
       getPublicHomepageMainContent(),
       getPublicHomepageStats(),
@@ -152,7 +151,6 @@ export default async function HomePage() {
       getActiveKnownPageSlugs(),
       getPublicSiteSocial(),
       getPublicCategories(),
-      getPublicBlogListing({ page: 1 }),
       requestService.listAllPublished(1, 12),
     ]);
 
@@ -175,7 +173,6 @@ export default async function HomePage() {
     activeKnownPageSlugs,
     social,
     categories,
-    blogPosts: blogListing.posts,
     featuredRequests: requestsResult.items,
     hasMoreRequests: requestsResult.totalItems > requestsResult.items.length,
     isAuthenticated: Boolean(session?.user?.id),
