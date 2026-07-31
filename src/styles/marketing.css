@@ -168,13 +168,13 @@
   .matloob-marketing-root section.hero{
     position:relative; overflow:hidden;
     background:var(--grad-hero-bg);
-    padding:25px 0 0;
+    padding:20px 0 0;
     z-index:1;
   }
   .matloob-marketing-root .hero-v2-wrap{
     position:relative; z-index:2;
     display:flex; align-items:center; justify-content:center;
-    min-height:128px; padding:4px 0 14px;
+    min-height:100px; padding:4px 0 12px;
   }
 
   /* ---------- premium static 2D vector illustrations, scattered
@@ -190,27 +190,27 @@
   .matloob-marketing-root .hero-illo{
     position:absolute;
     display:flex; align-items:center; justify-content:center;
-    width:108px; height:108px; border-radius:50%;
+    width:72px; height:72px; border-radius:50%;
     background:radial-gradient(circle, var(--teal-50) 0%, rgba(224,247,247,0) 72%);
   }
   .matloob-marketing-root .hero-illo svg{width:80%; height:80%;}
-  .matloob-marketing-root .hero-illo-lg{width:173px; height:173px;}
-  .matloob-marketing-root .hero-illo-sm{width:84px; height:84px;}
+  .matloob-marketing-root .hero-illo-lg{width:112px; height:112px;}
+  .matloob-marketing-root .hero-illo-sm{width:56px; height:56px;}
 
-  /* Left cluster: organic, non-columnar — house sits high and closest
-     in, car drops lower and drifts outward, phone/package tuck in
-     near the bottom at different depths so nothing lines up
-     vertically. */
-  .matloob-marketing-root .hero-pos-house{top:0%; left:19%;}
-  .matloob-marketing-root .hero-pos-car{top:26%; left:4%;}
-  .matloob-marketing-root .hero-pos-phone{top:54%; left:21%;}
-  .matloob-marketing-root .hero-pos-package{top:50%; left:33%;}
+  /* Left cluster: kept entirely within the outer ~15% margin of the
+     container (never reaching the centered 640px text column below),
+     staggered vertically so it still reads as organic rather than a
+     straight line. */
+  .matloob-marketing-root .hero-pos-house{top:2%; left:4%;}
+  .matloob-marketing-root .hero-pos-car{top:32%; left:0%;}
+  .matloob-marketing-root .hero-pos-phone{top:64%; left:6%;}
+  .matloob-marketing-root .hero-pos-package{top:56%; left:12%;}
 
   /* Right cluster: mirrors the left's organic staggering. */
-  .matloob-marketing-root .hero-pos-laptop{top:-2%; right:17%;}
-  .matloob-marketing-root .hero-pos-toolbox{top:24%; right:3%;}
-  .matloob-marketing-root .hero-pos-luggage{top:52%; right:31%;}
-  .matloob-marketing-root .hero-pos-dog{top:48%; right:19%;}
+  .matloob-marketing-root .hero-pos-laptop{top:0%; right:4%;}
+  .matloob-marketing-root .hero-pos-toolbox{top:30%; right:0%;}
+  .matloob-marketing-root .hero-pos-luggage{top:62%; right:6%;}
+  .matloob-marketing-root .hero-pos-dog{top:54%; right:12%;}
 
   .matloob-marketing-root .hero-copy-v2{max-width:640px; text-align:center; position:relative; z-index:5; margin:0 auto;}
   .matloob-marketing-root p.hero-sub{margin-inline:auto;}
@@ -255,17 +255,17 @@
      the scrolling items filling the rest. Pure CSS animation only (no
      JS, no heavy work) — the track's content is duplicated once by
      the renderer so the loop is seamless. */
-  .matloob-marketing-root .ticker-section-wrap{position:relative; z-index:1; padding:0 0 14px;}
+  .matloob-marketing-root .ticker-section-wrap{position:relative; z-index:1; padding:18px 0 14px;}
   .matloob-marketing-root .ticker-pill{
     display:flex; align-items:center; gap:8px;
     max-width:920px; margin:0 auto;
     background:var(--surface); border:1px solid var(--border);
     border-radius:999px; box-shadow:var(--shadow-md);
-    padding:4px 4px 4px 16px;
+    padding:3px 3px 3px 14px;
   }
   .matloob-marketing-root .ticker-label{
     flex-shrink:0; display:inline-flex; align-items:center; gap:5px;
-    padding:6px 16px; border-radius:999px;
+    padding:5px 16px; border-radius:999px;
     background:var(--grad-primary); color:#fff;
     font-size:12px; font-weight:800; white-space:nowrap;
   }
@@ -468,9 +468,9 @@
     .matloob-marketing-root section.hero{padding:0;}
     .matloob-marketing-root section.hero .wrap{padding:0 18px;}
     .matloob-marketing-root .hero-v2-wrap{min-height:auto; padding:14px 0 26px;}
-    .matloob-marketing-root .hero-illo{width:78px; height:78px;}
-    .matloob-marketing-root .hero-illo-lg{width:100px; height:100px;}
-    .matloob-marketing-root .hero-illo-sm{width:62px; height:62px;}
+    .matloob-marketing-root .hero-illo{width:48px; height:48px;}
+    .matloob-marketing-root .hero-illo-lg{width:74px; height:74px;}
+    .matloob-marketing-root .hero-illo-sm{width:38px; height:38px;}
 
     .matloob-marketing-root h1.hero-title{font-size:23px; line-height:1.42; margin-bottom:12px;}
     .matloob-marketing-root p.hero-sub{font-size:12.5px; margin-bottom:22px; max-width:100%; line-height:1.75;}
@@ -576,7 +576,7 @@
     .matloob-marketing-root .hero-copy-v2{max-width:100%; padding:0;}
     .matloob-marketing-root h1.hero-title{font-size:20px; line-height:1.45; margin-bottom:10px;}
     .matloob-marketing-root p.hero-sub{font-size:12px; margin-bottom:18px;}
-    .matloob-marketing-root .hero-cta-v2{width:100%; padding:15px 20px; font-size:14px;}
+    .matloob-marketing-root .hero-cta-v2{width:88%; margin:0 auto 18px; padding:15px 20px; font-size:14px;}
     .matloob-marketing-root .ticker-item{font-size:11.5px; padding:0 16px;}
     .matloob-marketing-root .ticker-pill{padding:5px 5px 5px 12px; gap:10px;}
     .matloob-marketing-root .ticker-label{padding:7px 12px; font-size:11px;}
