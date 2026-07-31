@@ -86,7 +86,7 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
           {found.description}
         </p>
 
-        {!isOwner && found.media.length > 0 && (
+        {found.media.length > 0 && (
           <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4">
             {found.media.map((img) => (
               <div
@@ -128,6 +128,42 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
             </dd>
           </div>
         </dl>
+
+        {(found.contact.phoneVisible || found.contact.whatsappVisible || found.contact.emailVisible) && (
+          <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm">
+            <p className="mb-2 font-bold text-navy-950">معلومات التواصل</p>
+            <div className="space-y-1.5">
+              {found.contact.phoneVisible && found.contact.phone && (
+                <p>
+                  <span className="text-text-500">الجوال: </span>
+                  <a href={`tel:${found.contact.phone}`} className="font-semibold text-teal-700" dir="ltr">
+                    {found.contact.phone}
+                  </a>
+                </p>
+              )}
+              {found.contact.whatsappVisible && found.contact.whatsapp && (
+                <p>
+                  <span className="text-text-500">واتساب: </span>
+                  <a
+                    href={`https://wa.me/${found.contact.whatsapp.replace(/[^0-9]/g, "")}`}
+                    className="font-semibold text-teal-700"
+                    dir="ltr"
+                  >
+                    {found.contact.whatsapp}
+                  </a>
+                </p>
+              )}
+              {found.contact.emailVisible && found.contact.email && (
+                <p>
+                  <span className="text-text-500">البريد الإلكتروني: </span>
+                  <a href={`mailto:${found.contact.email}`} className="font-semibold text-teal-700" dir="ltr">
+                    {found.contact.email}
+                  </a>
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {isOwner && <RequestOwnerActions requestId={found.id} status={found.status} />}
         {isOwner && <RequestImageManager requestId={found.id} initialImages={found.media} />}

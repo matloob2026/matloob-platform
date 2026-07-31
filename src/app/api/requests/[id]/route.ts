@@ -12,6 +12,12 @@ const UpdateRequestSchema = z.object({
   description: z.string().trim().min(20).max(4000).optional(),
   budgetMin: z.number().nonnegative().nullable().optional(),
   budgetMax: z.number().nonnegative().nullable().optional(),
+  contactPhone: z.string().trim().max(30).nullable().optional(),
+  contactPhoneVisible: z.boolean().optional(),
+  contactWhatsapp: z.string().trim().max(30).nullable().optional(),
+  contactWhatsappVisible: z.boolean().optional(),
+  contactEmail: z.string().trim().email().max(190).nullable().optional().or(z.literal("")),
+  contactEmailVisible: z.boolean().optional(),
 });
 
 /**

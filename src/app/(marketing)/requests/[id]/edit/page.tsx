@@ -48,13 +48,17 @@ export default async function EditRequestPage({ params }: { params: Promise<{ id
         options={options}
         initialValues={{
           categoryId: existing.category.id,
-          countryId: existing.country.id,
           cityId: existing.city?.id ?? "",
-          currencyId: "", // currency id isn't carried on RequestDetail (only code/symbol) — left blank; unchanged unless the buyer picks a new one
           title: existing.title,
           description: existing.description,
           budgetMin: existing.budgetMin?.toString() ?? "",
           budgetMax: existing.budgetMax?.toString() ?? "",
+          contactPhone: existing.contact.phone ?? "",
+          contactPhoneVisible: existing.contact.phoneVisible,
+          contactWhatsapp: existing.contact.whatsapp ?? "",
+          contactWhatsappVisible: existing.contact.whatsappVisible,
+          contactEmail: existing.contact.email ?? "",
+          contactEmailVisible: existing.contact.emailVisible,
         }}
       />
     </main>

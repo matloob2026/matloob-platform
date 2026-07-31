@@ -115,10 +115,25 @@ export interface RequestSummary {
   createdAt: string;
 }
 
+/** Requests polish pass: optional owner-supplied contact info,
+ * replacing Country/Currency on the create-request form. Each field
+ * has its own visibility flag — `RequestDetail.contact` always
+ * carries the raw values (the owner needs them to edit later); public
+ * rendering filters by the `*Visible` flags at display time. */
+export interface RequestContactInfo {
+  phone?: string;
+  phoneVisible: boolean;
+  whatsapp?: string;
+  whatsappVisible: boolean;
+  email?: string;
+  emailVisible: boolean;
+}
+
 export interface RequestDetail extends RequestSummary {
   owner: UserSummary;
   media: RequestMedia[];
   expiresAt?: string;
+  contact: RequestContactInfo;
 }
 
 export interface Offer {

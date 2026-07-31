@@ -12,13 +12,22 @@ import type { RequestFormOptions } from "@/lib/request-form-options";
 
 export interface RequestFormValues {
   categoryId: string;
-  countryId: string;
   cityId: string;
-  currencyId: string;
   title: string;
   description: string;
   budgetMin: string;
   budgetMax: string;
+  /** Requests polish pass: Country/Currency were removed from this
+   * form (the request now only depends on the chosen city — the
+   * server derives the country from it); this replaces them with
+   * optional contact info, each with its own public-visibility
+   * toggle. */
+  contactPhone: string;
+  contactPhoneVisible: boolean;
+  contactWhatsapp: string;
+  contactWhatsappVisible: boolean;
+  contactEmail: string;
+  contactEmailVisible: boolean;
 }
 
 interface RequestFormProps {
@@ -30,13 +39,17 @@ interface RequestFormProps {
 
 const EMPTY_VALUES: RequestFormValues = {
   categoryId: "",
-  countryId: "",
   cityId: "",
-  currencyId: "",
   title: "",
   description: "",
   budgetMin: "",
   budgetMax: "",
+  contactPhone: "",
+  contactPhoneVisible: false,
+  contactWhatsapp: "",
+  contactWhatsappVisible: false,
+  contactEmail: "",
+  contactEmailVisible: false,
 };
 
 export function RequestForm({ mode, requestId, options, initialValues }: RequestFormProps) {
@@ -77,10 +90,25 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
     [categoryOptions, values.categoryId]
   );
 
-  const citiesForCountry = useMemo(
-    () => options.cities.filter((c) => c.countryId === values.countryId),
-    [options.cities, values.countryId]
-  );
+  // Requests polish pass: the city select is no longer filtered by a
+  // separately-chosen country (that field was removed) — group every
+  // city by its own country instead, via the SAME native <optgroup>
+  // pattern already used for categories above, so the list stays easy
+  // to scan without needing a country picker first.
+  const countryOptions = options.countries;
+  const cityOptions = options.cities;
+  const countryNameById = useMemo(() => new Map(countryOptions.map((c) => [c.id, c.name])), [countryOptions]);
+  const cityGroups = useMemo(() => {
+    const byCountry = new Map<string, typeof cityOptions>();
+    for (const city of cityOptions) {
+      const list = byCountry.get(city.countryId) ?? [];
+      list.push(city);
+      byCountry.set(city.countryId, list);
+    }
+    return Array.from(byCountry.entries()).map(
+      ([countryId, cities]) => [countryNameById.get(countryId) ?? "", cities] as const
+    );
+  }, [cityOptions, countryNameById]);
 
   function update<K extends keyof RequestFormValues>(key: K, value: RequestFormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -94,6 +122,14 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
 
     const budgetMin = values.budgetMin.trim() ? Number(values.budgetMin) : undefined;
     const budgetMax = values.budgetMax.trim() ? Number(values.budgetMax) : undefined;
+    const contactPayload = {
+      contactPhone: values.contactPhone.trim() || undefined,
+      contactPhoneVisible: values.contactPhoneVisible,
+      contactWhatsapp: values.contactWhatsapp.trim() || undefined,
+      contactWhatsappVisible: values.contactWhatsappVisible,
+      contactEmail: values.contactEmail.trim() || undefined,
+      contactEmailVisible: values.contactEmailVisible,
+    };
 
     try {
       if (mode === "create") {
@@ -101,13 +137,12 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
           method: "POST",
           body: JSON.stringify({
             categoryId: values.categoryId,
-            countryId: values.countryId,
-            cityId: values.cityId || undefined,
-            currencyId: values.currencyId || undefined,
+            cityId: values.cityId,
             title: values.title,
             description: values.description,
             budgetMin,
             budgetMax,
+            ...contactPayload,
           }),
         });
 
@@ -134,11 +169,11 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
           body: JSON.stringify({
             categoryId: values.categoryId,
             cityId: values.cityId || undefined,
-            currencyId: values.currencyId || undefined,
             title: values.title,
             description: values.description,
             budgetMin: budgetMin ?? null,
             budgetMax: budgetMax ?? null,
+            ...contactPayload,
           }),
         });
         router.push(`/requests/${data.id}`);
@@ -254,33 +289,17 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
           </div>
         </FormField>
 
-        {mode === "create" && (
-          <FormField label="الدولة">
-            <Select
-              value={values.countryId}
-              onChange={(e) => {
-                update("countryId", e.target.value);
-                update("cityId", "");
-              }}
-              required
-            >
-              <option value="">اختر الدولة</option>
-              {options.countries.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-        )}
-
-        <FormField label="المدينة (اختياري)">
-          <Select value={values.cityId} onChange={(e) => update("cityId", e.target.value)}>
-            <option value="">بدون تحديد</option>
-            {citiesForCountry.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
+        <FormField label="المدينة">
+          <Select value={values.cityId} onChange={(e) => update("cityId", e.target.value)} required>
+            <option value="">اختر المدينة</option>
+            {cityGroups.map(([countryName, cities]) => (
+              <optgroup key={countryName} label={countryName}>
+                {cities.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </Select>
         </FormField>
@@ -304,16 +323,79 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
           </FormField>
         </div>
 
-        <FormField label="العملة (اختياري)">
-          <Select value={values.currencyId} onChange={(e) => update("currencyId", e.target.value)}>
-            <option value="">بدون تحديد</option>
-            {options.currencies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.code} ({c.symbol})
-              </option>
-            ))}
-          </Select>
-        </FormField>
+        <div className="space-y-3 rounded-lg border border-border p-4">
+          <p className="text-sm font-bold text-navy-950">معلومات التواصل (اختياري)</p>
+          <p className="text-xs text-text-400">
+            اختياري بالكامل — فعّل &quot;إظهار للزوار&quot; لأي وسيلة تريد أن يراها من يزور صفحة طلبك، ويمكنك تعديلها لاحقاً.
+          </p>
+
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <FormField label="رقم الجوال">
+              <Input
+                dir="ltr"
+                placeholder="05XXXXXXXX"
+                value={values.contactPhone}
+                onChange={(e) => update("contactPhone", e.target.value)}
+              />
+            </FormField>
+            </div>
+            <label className="mb-2 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-text-500">
+              <input
+                type="checkbox"
+                checked={values.contactPhoneVisible}
+                onChange={(e) => update("contactPhoneVisible", e.target.checked)}
+                className="h-4 w-4 rounded border-border-strong text-teal-600 focus:ring-teal-500"
+              />
+              إظهار للزوار
+            </label>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <FormField label="رقم الواتساب">
+              <Input
+                dir="ltr"
+                placeholder="05XXXXXXXX"
+                value={values.contactWhatsapp}
+                onChange={(e) => update("contactWhatsapp", e.target.value)}
+              />
+            </FormField>
+            </div>
+            <label className="mb-2 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-text-500">
+              <input
+                type="checkbox"
+                checked={values.contactWhatsappVisible}
+                onChange={(e) => update("contactWhatsappVisible", e.target.checked)}
+                className="h-4 w-4 rounded border-border-strong text-teal-600 focus:ring-teal-500"
+              />
+              إظهار للزوار
+            </label>
+          </div>
+
+          <div className="flex items-end gap-3">
+            <div className="flex-1">
+              <FormField label="البريد الإلكتروني">
+              <Input
+                dir="ltr"
+                type="email"
+                placeholder="example@email.com"
+                value={values.contactEmail}
+                onChange={(e) => update("contactEmail", e.target.value)}
+              />
+            </FormField>
+            </div>
+            <label className="mb-2 flex items-center gap-1.5 whitespace-nowrap text-xs font-semibold text-text-500">
+              <input
+                type="checkbox"
+                checked={values.contactEmailVisible}
+                onChange={(e) => update("contactEmailVisible", e.target.checked)}
+                className="h-4 w-4 rounded border-border-strong text-teal-600 focus:ring-teal-500"
+              />
+              إظهار للزوار
+            </label>
+          </div>
+        </div>
 
         {mode === "create" && (
           <FormField label="صور الطلب (اختياري)">

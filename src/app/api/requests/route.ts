@@ -6,14 +6,19 @@ import type { ApiError } from "@/types/domain";
 
 const CreateRequestSchema = z.object({
   categoryId: z.string().min(1),
-  countryId: z.string().min(1),
-  cityId: z.string().min(1).optional(),
+  cityId: z.string().min(1),
   currencyId: z.string().min(1).optional(),
   title: z.string().trim().min(5).max(120),
   description: z.string().trim().min(20).max(4000),
   budgetMin: z.number().nonnegative().optional(),
   budgetMax: z.number().nonnegative().optional(),
   mediaIds: z.array(z.string()).max(10).optional(),
+  contactPhone: z.string().trim().max(30).optional(),
+  contactPhoneVisible: z.boolean().optional(),
+  contactWhatsapp: z.string().trim().max(30).optional(),
+  contactWhatsappVisible: z.boolean().optional(),
+  contactEmail: z.string().trim().email().max(190).optional().or(z.literal("")),
+  contactEmailVisible: z.boolean().optional(),
 });
 
 export async function POST(request: Request) {

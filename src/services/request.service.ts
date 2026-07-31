@@ -80,7 +80,17 @@ export function requestServiceErrorStatus(code: RequestServiceError["code"]): nu
 export interface CreateRequestInput {
   ownerId: string;
   categoryId: string;
-  countryId: string;
+  /** Optional now — the create-request form no longer asks for a
+   * country (see cityId below); when omitted, `create()` derives it
+   * from the given city's own country. Still resolved and stored on
+   * every request, since country-scoped browsing (`list()` below)
+   * still depends on it — only the FORM stopped asking for it. */
+  countryId?: string;
+  /** The request's sole location signal now (Country/Currency removed
+   * from the create-request form) — required in practice via the API
+   * route's validation, kept optional here at the type level like
+   * every other optional field for consistency with this interface's
+   * existing style. */
   cityId?: string;
   currencyId?: string;
   title: string;
@@ -88,6 +98,15 @@ export interface CreateRequestInput {
   budgetMin?: number;
   budgetMax?: number;
   mediaIds?: string[];
+  /** Optional owner-supplied contact info, each with its own public-
+   * visibility flag — replaces the removed Country/Currency fields on
+   * the create-request form. */
+  contactPhone?: string;
+  contactPhoneVisible?: boolean;
+  contactWhatsapp?: string;
+  contactWhatsappVisible?: boolean;
+  contactEmail?: string;
+  contactEmailVisible?: boolean;
   /** Defaults to true — this platform's UX is "publish a need
    * immediately", not a multi-step draft workflow. Set to false for a
    * save-as-draft flow if one is added later; `publish()` below still
@@ -103,6 +122,14 @@ export interface UpdateRequestInput {
   description?: string;
   budgetMin?: number | null;
   budgetMax?: number | null;
+  /** The owner can always edit these later, per the polish pass's
+   * requirement — same fields as CreateRequestInput. */
+  contactPhone?: string | null;
+  contactPhoneVisible?: boolean;
+  contactWhatsapp?: string | null;
+  contactWhatsappVisible?: boolean;
+  contactEmail?: string | null;
+  contactEmailVisible?: boolean;
 }
 
 export interface ListRequestsFilter {
@@ -142,6 +169,14 @@ export interface RequestService {
    * is never hidden just because nothing is currently featured.
    */
   getFeaturedForHomepage(limit?: number): Promise<RequestSummary[]>;
+
+  /**
+   * Requests polish pass: the public "عرض جميع الطلبات" listing page
+   * (`/requests`) — paginated, platform-wide (not country-scoped,
+   * same reasoning as `getFeaturedForHomepage`), featured requests
+   * sorted first within each page just like the homepage section.
+   */
+  listAllPublished(page?: number, pageSize?: number): Promise<Paginated<RequestSummary>>;
 
   /**
    * Increments the denormalized `offerCount` on Request whenever an
@@ -238,6 +273,14 @@ function mapToDetail(row: NonNullable<RequestRow>): RequestDetail {
       })
     ),
     expiresAt: row.expiresAt?.toISOString(),
+    contact: {
+      phone: row.contactPhone ?? undefined,
+      phoneVisible: row.contactPhoneVisible,
+      whatsapp: row.contactWhatsapp ?? undefined,
+      whatsappVisible: row.contactWhatsappVisible,
+      email: row.contactEmail ?? undefined,
+      emailVisible: row.contactEmailVisible,
+    },
   };
 }
 
@@ -264,6 +307,19 @@ export class PrismaRequestService implements RequestService {
       );
     }
 
+    // The create-request form no longer asks for a country — resolve
+    // it from the chosen city instead (a request's Country is still a
+    // required column, used by country-scoped browsing elsewhere;
+    // only the FORM stopped asking the user to pick one directly).
+    let countryId = input.countryId;
+    if (!countryId && input.cityId) {
+      const city = await prisma.city.findUnique({ where: { id: input.cityId }, select: { countryId: true } });
+      countryId = city?.countryId;
+    }
+    if (!countryId) {
+      throw new RequestServiceError("City (or country) is required to create a request.", "VALIDATION_ERROR");
+    }
+
     const publishImmediately = input.publishImmediately ?? true;
     const now = new Date();
 
@@ -271,13 +327,19 @@ export class PrismaRequestService implements RequestService {
       data: {
         ownerId: input.ownerId,
         categoryId: input.categoryId,
-        countryId: input.countryId,
+        countryId,
         cityId: input.cityId,
         currencyId: input.currencyId,
         title: input.title.trim(),
         description: input.description.trim(),
         budgetMin: input.budgetMin,
         budgetMax: input.budgetMax,
+        contactPhone: input.contactPhone?.trim() || null,
+        contactPhoneVisible: input.contactPhoneVisible ?? false,
+        contactWhatsapp: input.contactWhatsapp?.trim() || null,
+        contactWhatsappVisible: input.contactWhatsappVisible ?? false,
+        contactEmail: input.contactEmail?.trim() || null,
+        contactEmailVisible: input.contactEmailVisible ?? false,
         status: publishImmediately ? "PUBLISHED" : "DRAFT",
         publishedAt: publishImmediately ? now : undefined,
         media: input.mediaIds?.length ? { connect: input.mediaIds.map((id) => ({ id })) } : undefined,
@@ -335,6 +397,12 @@ export class PrismaRequestService implements RequestService {
         description: input.description?.trim(),
         budgetMin,
         budgetMax,
+        contactPhone: input.contactPhone === null ? null : input.contactPhone?.trim() || undefined,
+        contactPhoneVisible: input.contactPhoneVisible,
+        contactWhatsapp: input.contactWhatsapp === null ? null : input.contactWhatsapp?.trim() || undefined,
+        contactWhatsappVisible: input.contactWhatsappVisible,
+        contactEmail: input.contactEmail === null ? null : input.contactEmail?.trim() || undefined,
+        contactEmailVisible: input.contactEmailVisible,
       },
     });
 
@@ -508,6 +576,27 @@ export class PrismaRequestService implements RequestService {
       take: limit,
     });
     return rows.map((r: NonNullable<RequestRow>) => mapToSummary(r));
+  }
+  async listAllPublished(page = 1, pageSize = 12): Promise<Paginated<RequestSummary>> {
+    const where = { deletedAt: null, status: "PUBLISHED" as const };
+    const [rows, totalItems] = await Promise.all([
+      prisma.request.findMany({
+        where,
+        include: requestInclude(),
+        orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.request.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((r: NonNullable<RequestRow>) => mapToSummary(r)),
+      page,
+      pageSize,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+    };
   }
 }
 

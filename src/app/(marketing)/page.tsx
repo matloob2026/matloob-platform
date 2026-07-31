@@ -138,7 +138,7 @@ export default async function HomePage() {
     "utf-8"
   );
 
-  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, blogListing, featuredRequests] =
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, blogListing, requestsResult] =
     await Promise.all([
       getPublicHomepageMainContent(),
       getPublicHomepageStats(),
@@ -149,7 +149,7 @@ export default async function HomePage() {
       getPublicSiteSocial(),
       getPublicCategories(),
       getPublicBlogListing({ page: 1 }),
-      requestService.getFeaturedForHomepage(3),
+      requestService.listAllPublished(1, 12),
     ]);
 
   const bodyHtml = renderHomepageHtml(rawHtml, {
@@ -162,7 +162,8 @@ export default async function HomePage() {
     social,
     categories,
     blogPosts: blogListing.posts,
-    featuredRequests,
+    featuredRequests: requestsResult.items,
+    hasMoreRequests: requestsResult.totalItems > requestsResult.items.length,
   });
 
   return (

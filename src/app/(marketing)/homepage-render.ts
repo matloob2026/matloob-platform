@@ -157,6 +157,7 @@ export function renderHomepageHtml(
     categories: PublicCategorySummary[];
     blogPosts: PublicBlogPostSummary[];
     featuredRequests: RequestSummary[];
+    hasMoreRequests: boolean;
   }
 ): string {
   let html = bodyHtml;
@@ -329,7 +330,6 @@ export function renderHomepageHtml(
   if (content.featuredRequests.length > 0) {
     const delayClasses = ["reveal-delay-1", "reveal-delay-2", "reveal-delay-3"];
     const requestsGridHtml = content.featuredRequests
-      .slice(0, 3)
       .map((req, index) => {
         const delayClass = delayClasses[index % delayClasses.length];
         const thumbHtml = req.coverImageUrl
@@ -354,6 +354,17 @@ export function renderHomepageHtml(
       `<!--CMS:REQUESTS_GRID_START-->${requestsGridHtml}<!--CMS:REQUESTS_GRID_END-->`
     );
   }
+
+  // "عرض جميع الطلبات" — only shown once more than the 12 displayed
+  // requests actually exist; hidden entirely otherwise (not just a
+  // dead "#" link like before).
+  const requestsSeeAllHtml = content.hasMoreRequests
+    ? `<a href="/requests" class="see-all">عرض جميع الطلبات ←</a>`
+    : "";
+  html = html.replace(
+    /<!--CMS:REQUESTS_SEE_ALL_START-->[\s\S]*?<!--CMS:REQUESTS_SEE_ALL_END-->/,
+    `<!--CMS:REQUESTS_SEE_ALL_START-->${requestsSeeAllHtml}<!--CMS:REQUESTS_SEE_ALL_END-->`
+  );
 
   if (content.blogPosts.length > 0) {
     const delayClasses = ["reveal-delay-1", "reveal-delay-2", "reveal-delay-3"];

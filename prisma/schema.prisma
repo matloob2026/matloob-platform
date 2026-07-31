@@ -427,6 +427,12 @@ model Request {
   budgetMax    Decimal?       @db.Decimal(12, 2)
   status       RequestStatus  @default(DRAFT)
   isFeatured   Boolean        @default(false) // Requests Admin Module: shown wherever the public site highlights featured requests
+  contactPhone            String? // Requests polish pass: optional owner-supplied contact info
+  contactPhoneVisible     Boolean @default(false)
+  contactWhatsapp         String?
+  contactWhatsappVisible  Boolean @default(false)
+  contactEmail            String?
+  contactEmailVisible     Boolean @default(false)
   viewCount    Int            @default(0)
   offerCount   Int            @default(0) // denormalized counter, kept in sync via service layer
   publishedAt  DateTime?
