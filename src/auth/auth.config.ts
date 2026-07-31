@@ -140,7 +140,17 @@ export const authConfig: NextAuthConfig = {
       }
       return true;
     },
-    async jwt({ token, user, account }) {
+    async jwt({ token, user, account, trigger, session }) {
+      // Client called update({ image: ... }) after an avatar
+      // upload/removal (see AvatarUploader.tsx) — merge it onto the
+      // token so every useSession() consumer site-wide (header, user
+      // menu, anywhere else) reflects it on the very next render,
+      // with no sign-out/in required.
+      if (trigger === "update" && session) {
+        if (typeof session.image !== "undefined") token.picture = session.image;
+        return token;
+      }
+
       if (account?.provider === "google" && user?.email) {
         // signIn() above already created/linked the account — just
         // look up the resolved internal user so the token carries OUR

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { useConfirm } from "@/components/ui/ConfirmDialogProvider";
@@ -10,6 +11,7 @@ import { apiFetch, ApiRequestError } from "@/lib/api-client";
 
 export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string }) {
   const router = useRouter();
+  const { update } = useSession();
   const confirm = useConfirm();
   const { showToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +36,7 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
       setAvatarUrl(data.url);
       setJustUpdated("uploaded");
       showToast("تم رفع الصورة", "success");
+      await update({ image: data.url });
       router.refresh();
     } catch (err) {
       const message = err instanceof ApiRequestError ? err.error.message : "تعذر رفع الصورة.";
@@ -62,6 +65,7 @@ export function AvatarUploader({ initialAvatarUrl }: { initialAvatarUrl?: string
       setAvatarUrl(undefined);
       setJustUpdated("removed");
       showToast("تم حذف الصورة", "success");
+      await update({ image: null });
       router.refresh();
     } catch (err) {
       const message = err instanceof ApiRequestError ? err.error.message : "تعذر حذف الصورة.";

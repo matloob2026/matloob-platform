@@ -65,18 +65,17 @@ function LogoSection() {
 /** Mirrors HERO_IMAGE_SLOTS in src/services/homepage-content.service.ts
  * exactly (kept as a local literal, not imported, since that service
  * file is server-only and can't be bundled into this client
- * component) — labels match the collage's original stock-photo alt
- * text in src/content/marketing/homepage-body.html. */
+ * component) — each label names the illustration that slot defaults
+ * to in src/content/marketing/homepage-body.html. */
 const HERO_IMAGE_SLOT_LABELS: { slot: HeroImageSlot; label: string }[] = [
-  { slot: "sc-villa", label: "عقارات" },
-  { slot: "sc-phone", label: "جوالات" },
-  { slot: "sc-laptop", label: "أجهزة" },
-  { slot: "sc-interior", label: "أثاث منزلي (١)" },
-  { slot: "sc-sofa", label: "أثاث منزلي (٢)" },
-  { slot: "sc-car", label: "سيارات" },
-  { slot: "sc-tech", label: "خدمات" },
-  { slot: "sc-dog", label: "حيوانات أليفة" },
-  { slot: "sc-travel", label: "سفر وسياحة" },
+  { slot: "car", label: "سيارة" },
+  { slot: "house", label: "منزل" },
+  { slot: "phone", label: "جوال" },
+  { slot: "package", label: "طرد" },
+  { slot: "laptop", label: "لابتوب" },
+  { slot: "dog", label: "كلب" },
+  { slot: "luggage", label: "حقيبة سفر" },
+  { slot: "toolbox", label: "صندوق أدوات" },
 ];
 
 const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
@@ -88,15 +87,14 @@ const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
   ctaLabelEn: "",
   ctaUrl: "",
   heroImages: {
-    "sc-villa": null,
-    "sc-phone": null,
-    "sc-laptop": null,
-    "sc-interior": null,
-    "sc-sofa": null,
-    "sc-car": null,
-    "sc-tech": null,
-    "sc-dog": null,
-    "sc-travel": null,
+    car: null,
+    house: null,
+    phone: null,
+    package: null,
+    laptop: null,
+    dog: null,
+    luggage: null,
+    toolbox: null,
   },
 };
 
@@ -106,8 +104,8 @@ const EMPTY_MAIN_CONTENT: HomepageMainContentItem = {
  * Reuses the existing PageContent(section: "hero") model — see
  * src/services/homepage-content.service.ts's HomepageAdminContentService.
  *
- * Hero IMAGES (the float-card collage) are also real and
- * database-backed now — each of the 9 collage slots picks an existing
+ * Hero IMAGES (the side illustrations) are also real and
+ * database-backed — each of the 8 illustration slots picks an existing
  * Media Library image via `<MediaPicker>`, stored in
  * `PageContent(hero,ar).extra` (see `HERO_IMAGE_SLOTS` in
  * homepage-content.service.ts) — no schema change.
@@ -131,15 +129,14 @@ function HeroSection({ initialContent }: { initialContent: HomepageMainContentIt
       ctaLabelEn: values.ctaLabelEn,
       ctaUrl: values.ctaUrl,
       heroImages: {
-        "sc-villa": values.heroImages["sc-villa"]?.id ?? null,
-        "sc-phone": values.heroImages["sc-phone"]?.id ?? null,
-        "sc-laptop": values.heroImages["sc-laptop"]?.id ?? null,
-        "sc-interior": values.heroImages["sc-interior"]?.id ?? null,
-        "sc-sofa": values.heroImages["sc-sofa"]?.id ?? null,
-        "sc-car": values.heroImages["sc-car"]?.id ?? null,
-        "sc-tech": values.heroImages["sc-tech"]?.id ?? null,
-        "sc-dog": values.heroImages["sc-dog"]?.id ?? null,
-        "sc-travel": values.heroImages["sc-travel"]?.id ?? null,
+        car: values.heroImages.car?.id ?? null,
+        house: values.heroImages.house?.id ?? null,
+        phone: values.heroImages.phone?.id ?? null,
+        package: values.heroImages.package?.id ?? null,
+        laptop: values.heroImages.laptop?.id ?? null,
+        dog: values.heroImages.dog?.id ?? null,
+        luggage: values.heroImages.luggage?.id ?? null,
+        toolbox: values.heroImages.toolbox?.id ?? null,
       },
     });
     setIsSaving(false);

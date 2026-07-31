@@ -168,31 +168,36 @@
   .matloob-marketing-root section.hero{
     position:relative; overflow:hidden;
     background:var(--grad-hero-bg);
-    padding:68px 0 0;
+    padding:52px 0 0;
     z-index:1;
   }
   .matloob-marketing-root .hero-v2-wrap{
     position:relative; z-index:2;
     display:flex; align-items:center; justify-content:center;
-    min-height:336px; padding:10px 0 44px;
+    min-height:262px; padding:6px 0 30px;
   }
 
-  /* ---------- premium static 2D flat illustrations, one group on each
-     side of the Hero copy. Matloob palette only (teal/navy fills) —
-     no photographs, no floating/animation of any kind. ---------- */
+  /* ---------- premium static 2D vector illustrations, one group on
+     each side of the Hero copy, joined by soft dashed curves — no
+     photographs, no floating/animation of any kind. ---------- */
+  .matloob-marketing-root .hero-connectors{
+    position:absolute; inset:0; width:100%; height:100%; z-index:0;
+    opacity:.7; pointer-events:none;
+  }
   .matloob-marketing-root .hero-illustrations{position:absolute; inset:0; z-index:1; pointer-events:none;}
   .matloob-marketing-root .hero-illo-side{
     position:absolute; top:50%; transform:translateY(-50%);
-    display:flex; flex-direction:column; gap:22px;
+    display:flex; flex-direction:column; align-items:center; gap:18px;
   }
-  .matloob-marketing-root .hero-illo-side-left{left:3%;}
-  .matloob-marketing-root .hero-illo-side-right{right:3%;}
+  .matloob-marketing-root .hero-illo-side-left{left:2%;}
+  .matloob-marketing-root .hero-illo-side-right{right:2%;}
   .matloob-marketing-root .hero-illo{
     display:flex; align-items:center; justify-content:center;
-    width:64px; height:64px; border-radius:18px;
-    background:var(--surface); box-shadow:var(--shadow-sm);
+    width:64px; height:64px;
   }
-  .matloob-marketing-root .hero-illo svg{width:38px; height:38px;}
+  .matloob-marketing-root .hero-illo svg{width:100%; height:100%;}
+  .matloob-marketing-root .hero-illo-lg{width:82px; height:82px;}
+  .matloob-marketing-root .hero-illo-sm{width:52px; height:52px;}
 
   .matloob-marketing-root .hero-copy-v2{max-width:640px; text-align:center; position:relative; z-index:5; margin:0 auto;}
   .matloob-marketing-root p.hero-sub{margin-inline:auto;}
@@ -232,23 +237,35 @@
   }
 
   /* ===================== REQUESTS TICKER ====================
-     Full-width, continuously scrolling, right-to-left. Pure CSS
-     animation only (no JS, no heavy work) — the track's content is
-     duplicated once by the renderer so the loop is seamless. */
-  .matloob-marketing-root .ticker-section{
-    overflow:hidden; position:relative; z-index:1;
-    background:var(--surface); border-top:1px solid var(--border); border-bottom:1px solid var(--border);
-    padding:15px 0;
+     A single floating rounded capsule sitting directly below the
+     Hero, exactly like the reference — a fixed label chip on one end,
+     the scrolling items filling the rest. Pure CSS animation only (no
+     JS, no heavy work) — the track's content is duplicated once by
+     the renderer so the loop is seamless. */
+  .matloob-marketing-root .ticker-section-wrap{position:relative; z-index:1; padding:0 0 40px;}
+  .matloob-marketing-root .ticker-pill{
+    display:flex; align-items:center; gap:14px;
+    max-width:920px; margin:0 auto;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:999px; box-shadow:var(--shadow-md);
+    padding:8px 8px 8px 22px;
   }
+  .matloob-marketing-root .ticker-label{
+    flex-shrink:0; display:inline-flex; align-items:center; gap:6px;
+    padding:9px 20px; border-radius:999px;
+    background:var(--grad-primary); color:#fff;
+    font-size:13px; font-weight:800; white-space:nowrap;
+  }
+  .matloob-marketing-root .ticker-viewport{flex:1 1 auto; min-width:0; overflow:hidden;}
   .matloob-marketing-root .ticker-track{
     display:flex; align-items:center; width:max-content;
-    animation:ticker-scroll 48s linear infinite;
+    animation:ticker-scroll 40s linear infinite;
   }
-  .matloob-marketing-root .ticker-section:hover .ticker-track{animation-play-state:paused;}
+  .matloob-marketing-root .ticker-pill:hover .ticker-track{animation-play-state:paused;}
   @keyframes ticker-scroll{from{transform:translateX(0);} to{transform:translateX(-50%);}}
   .matloob-marketing-root .ticker-item{
     display:inline-flex; align-items:center; gap:8px; white-space:nowrap;
-    padding:0 26px; font-size:13.5px; font-weight:600; color:var(--navy-900);
+    padding:0 22px; font-size:13px; font-weight:600; color:var(--navy-900);
     border-inline-end:1px solid var(--border);
   }
   .matloob-marketing-root .ticker-icon{color:var(--teal-500); font-size:9px;}
@@ -419,13 +436,14 @@
     .matloob-marketing-root .mobile-menu-btn{display:flex;}
 
     /* ---- Hero: tablet — illustrations shrink proportionally; the
-         ticker stays full-width and untouched (already lightweight at
+         ticker pill narrows with the container (already lightweight at
          any size). ---- */
     .matloob-marketing-root section.hero{padding:0;}
     .matloob-marketing-root section.hero .wrap{padding:0 18px;}
     .matloob-marketing-root .hero-v2-wrap{min-height:auto; padding:20px 0 32px;}
-    .matloob-marketing-root .hero-illo{width:44px; height:44px; border-radius:14px;}
-    .matloob-marketing-root .hero-illo svg{width:26px; height:26px;}
+    .matloob-marketing-root .hero-illo{width:44px; height:44px;}
+    .matloob-marketing-root .hero-illo-lg{width:56px; height:56px;}
+    .matloob-marketing-root .hero-illo-sm{width:36px; height:36px;}
     .matloob-marketing-root .hero-illo-side{gap:14px;}
     .matloob-marketing-root .hero-illo-side-left{left:1%;}
     .matloob-marketing-root .hero-illo-side-right{right:1%;}
@@ -435,6 +453,8 @@
     .matloob-marketing-root .hero-cta-v2{padding:16px 32px; font-size:15px; border-radius:16px;}
     .matloob-marketing-root .btn-lg{padding:11px 18px; font-size:13px; border-radius:12px;}
     .matloob-marketing-root .ticker-item{font-size:12.5px; padding:0 20px;}
+    .matloob-marketing-root .ticker-pill{padding:6px 6px 6px 16px;}
+    .matloob-marketing-root .ticker-label{padding:8px 16px; font-size:12px;}
 
     /* ---- Section heads / typography ---- */
     .matloob-marketing-root .section-head{margin-bottom:20px;}
@@ -524,12 +544,16 @@
   /* ---- Phone tier ---- */
   @media (max-width: 560px){
     .matloob-marketing-root .hero-illustrations{display:none;}
+    .matloob-marketing-root .hero-connectors{display:none;}
     .matloob-marketing-root section.hero .wrap{padding:0 16px;}
     .matloob-marketing-root .hero-copy-v2{max-width:100%; padding:0;}
     .matloob-marketing-root h1.hero-title{font-size:20px; line-height:1.45; margin-bottom:10px;}
     .matloob-marketing-root p.hero-sub{font-size:12px; margin-bottom:18px;}
     .matloob-marketing-root .hero-cta-v2{width:100%; padding:15px 20px; font-size:14px;}
     .matloob-marketing-root .ticker-item{font-size:11.5px; padding:0 16px;}
+    .matloob-marketing-root .ticker-pill{padding:5px 5px 5px 12px; gap:10px;}
+    .matloob-marketing-root .ticker-label{padding:7px 12px; font-size:11px;}
+    .matloob-marketing-root .ticker-label svg{width:12px; height:12px;}
     /* Illustrations are hidden entirely on phones — see
        .hero-illustrations{display:none} above; the hero copy gets the
        full-width wrap to itself here, matching "excellent mobile

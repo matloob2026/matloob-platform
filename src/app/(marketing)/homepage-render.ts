@@ -197,6 +197,21 @@ export function renderHomepageHtml(
       /<!--CMS:CTA_START-->[\s\S]*?<!--CMS:CTA_END-->/,
       `<!--CMS:CTA_START-->${ctaHtml}<!--CMS:CTA_END-->`
     );
+
+    // Hero illustration slots — each defaults to a built-in premium
+    // vector illustration (the raw SVG sitting between these same
+    // markers in homepage-body.html). Picking a Media Library image
+    // for a slot in the Admin CMS replaces that ENTIRE block with a
+    // plain <img> — no code change needed either way (see
+    // HERO_IMAGE_SLOTS in homepage-content.service.ts).
+    for (const [slot, url] of Object.entries(content.main.heroImages)) {
+      if (!url) continue;
+      const startMarker = `<!--CMS:HERO_IMG_${slot}_START-->`;
+      const endMarker = `<!--CMS:HERO_IMG_${slot}_END-->`;
+      const pattern = new RegExp(`${startMarker}[\\s\\S]*?${endMarker}`);
+      const imgHtml = `${startMarker}<img src="${escapeHtml(url)}" alt="${escapeHtml(slot)}" loading="lazy">${endMarker}`;
+      html = html.replace(pattern, imgHtml);
+    }
   }
 
   if (content.trustBadges.length > 0) {

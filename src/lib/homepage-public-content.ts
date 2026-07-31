@@ -28,9 +28,9 @@ export interface PublicHomepageMainContent {
   body: string;
   ctaLabel: string;
   ctaUrl: string;
-  /** Real, admin-selected images per collage slot (via the Media
-   * Library) — a slot missing from this map means "keep the original
-   * static stock photo for that slot" (see homepage-render.ts). */
+  /** Real, admin-selected images per illustration slot (via the Media
+   * Library) — a slot missing from this map means "keep the built-in
+   * default illustration for that slot" (see homepage-render.ts). */
   heroImages: Partial<Record<HeroImageSlot, string>>;
 }
 

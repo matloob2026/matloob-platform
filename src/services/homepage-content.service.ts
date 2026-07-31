@@ -148,21 +148,21 @@ function warnAuditSkipped(action: string, entityId: string, actorId: string): vo
 // 1. Homepage Main Content (PageContent: page="homepage", section="hero")
 // ---------------------------------------------------------------------
 
-/** The 9 real `<img>` slots in the hero's float-card collage — see the
+/** The 8 illustration slots flanking the Hero — see the
  * `CMS:HERO_IMG_<slot>_START/END` markers in
- * src/content/marketing/homepage-body.html. These CSS class names
- * (`sc-villa`, etc.) are the collage's existing, stable slot
- * identifiers; nothing new is invented here. */
+ * src/content/marketing/homepage-body.html. Each slot has a premium
+ * default vector illustration built into the template; picking a
+ * Media Library image here replaces that slot's default with the
+ * admin's own image — no code change needed either way. */
 export const HERO_IMAGE_SLOTS = [
-  "sc-villa",
-  "sc-phone",
-  "sc-laptop",
-  "sc-interior",
-  "sc-sofa",
-  "sc-car",
-  "sc-tech",
-  "sc-dog",
-  "sc-travel",
+  "car",
+  "house",
+  "phone",
+  "package",
+  "laptop",
+  "dog",
+  "luggage",
+  "toolbox",
 ] as const;
 export type HeroImageSlot = (typeof HERO_IMAGE_SLOTS)[number];
 
@@ -178,13 +178,13 @@ export interface HomepageMainContentItem {
    * the schema stores it per-locale, but this checkpoint exposes one
    * field and mirrors it onto both locale rows on save). */
   ctaUrl: string;
-  /** Media Library integration — one existing `Media` row per collage
-   * slot, chosen via `<MediaPicker>`. Stored in
+  /** Media Library integration — one existing `Media` row per
+   * illustration slot, chosen via `<MediaPicker>`. Stored in
    * `PageContent(hero,ar).extra` (already in the schema as free-form
    * Json — reused here exactly like Static Pages already reuse it for
    * `navPlacement`/`navOrder`; no schema change). A slot with no
    * selection is `null` — the public renderer then keeps that slot's
-   * original stock photo untouched (see homepage-render.ts). */
+   * built-in default illustration untouched (see homepage-render.ts). */
   heroImages: Record<HeroImageSlot, { id: string; url: string } | null>;
 }
 
@@ -196,9 +196,9 @@ export interface HomepageMainContentInput {
   ctaLabelAr: string;
   ctaLabelEn: string;
   ctaUrl: string;
-  /** Existing `Media` row ids per collage slot, chosen via
+  /** Existing `Media` row ids per illustration slot, chosen via
    * `<MediaPicker>`. A slot omitted or set to `null` clears/keeps that
-   * slot's original stock photo. */
+   * slot's built-in default illustration. */
   heroImages?: Partial<Record<HeroImageSlot, string | null>>;
 }
 
