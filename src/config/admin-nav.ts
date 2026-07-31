@@ -30,6 +30,7 @@ import {
   ClipboardList,
   HandCoins,
   LayoutGrid,
+  ListOrdered,
   Home,
   LayoutTemplate,
   Globe2,
@@ -85,6 +86,7 @@ export const ADMIN_NAV_GROUPS: NavGroup[] = [
       { label: "القسم الرئيسي (Hero)", href: "/admin/homepage?tab=hero", icon: LayoutTemplate, permission: "homepage:view" },
       // Real, database-backed as of Checkpoint 01 — Category/CategoryTranslation.
       { label: "التصنيفات", href: "/admin/categories", icon: LayoutGrid, permission: "categories:view" },
+      { label: "ترتيب التصنيفات", href: "/admin/categories/order", icon: ListOrdered, permission: "categories:view" },
       // Reuses the existing /admin/localization page's "countries" tab
       // (Country/CountryTranslation/CountryCurrency) — no duplicate model.
       { label: "الدول", href: "/admin/localization?tab=countries", icon: Globe2, permission: "localization:view" },

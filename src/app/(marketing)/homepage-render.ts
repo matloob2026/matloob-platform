@@ -274,6 +274,7 @@ export function renderHomepageHtml(
   if (content.categories.length > 0) {
     const delayClasses = ["reveal-delay-1", "reveal-delay-2", "reveal-delay-3", "reveal-delay-4"];
     const gridHtml = content.categories
+      .slice(0, 6)
       .map((category, index) => {
         const delayClass = delayClasses[index % delayClasses.length];
         const href = `/categories/${escapeHtml(category.slug)}`;
@@ -306,7 +307,7 @@ export function renderHomepageHtml(
     );
     html = html.replace(
       /<!--CMS:CATEGORIES_SEE_ALL_START-->[\s\S]*?<!--CMS:CATEGORIES_SEE_ALL_END-->/,
-      `<!--CMS:CATEGORIES_SEE_ALL_START--><a href="/categories" class="see-all">عرض الكل ←</a><!--CMS:CATEGORIES_SEE_ALL_END-->`
+      `<!--CMS:CATEGORIES_SEE_ALL_START--><a href="/categories" class="see-all">عرض جميع التصنيفات ←</a><!--CMS:CATEGORIES_SEE_ALL_END-->`
     );
   }
 

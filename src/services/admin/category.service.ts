@@ -671,6 +671,41 @@ export class CategoryAdminService {
       }
     });
   }
+
+  /**
+   * Category Ordering (Admin). Reuses the EXISTING `Category.sortOrder`
+   * column (already read by `getPublicCategories`/`listCategories` via
+   * `orderBy: [{ sortOrder: "asc" }, ...]`) — no schema change. Takes
+   * the category ids in their new desired order and writes
+   * `sortOrder = index` for each, in one transaction, so the
+   * homepage's first-6 grid and the full `/categories` page both pick
+   * up the new order immediately (same underlying field, same
+   * `orderBy`, nothing else to keep in sync).
+   */
+  async reorderCategories(orderedIds: string[], actorId: string): Promise<void> {
+    const hasRealActor = await actorExists(actorId);
+
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await Promise.all(
+        orderedIds.map((id, index) => tx.category.update({ where: { id }, data: { sortOrder: index } }))
+      );
+
+      if (hasRealActor) {
+        await tx.adminAuditLog.create({
+          data: {
+            actorId,
+            action: "REORDER_CATEGORIES",
+            entityType: "Category",
+            entityId: null,
+            before: undefined,
+            after: { order: orderedIds },
+          },
+        });
+      } else {
+        warnAuditSkipped("REORDER_CATEGORIES", "bulk", actorId);
+      }
+    });
+  }
 }
 
 export const categoryAdminService = new CategoryAdminService();

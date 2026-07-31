@@ -168,13 +168,13 @@
   .matloob-marketing-root section.hero{
     position:relative; overflow:hidden;
     background:var(--grad-hero-bg);
-    padding:38px 0 0;
+    padding:31px 0 0;
     z-index:1;
   }
   .matloob-marketing-root .hero-v2-wrap{
     position:relative; z-index:2;
     display:flex; align-items:center; justify-content:center;
-    min-height:190px; padding:4px 0 22px;
+    min-height:156px; padding:4px 0 18px;
   }
 
   /* ---------- premium static 2D vector illustrations, scattered
@@ -190,26 +190,27 @@
   .matloob-marketing-root .hero-illo{
     position:absolute;
     display:flex; align-items:center; justify-content:center;
-    width:60px; height:60px; border-radius:50%;
+    width:80px; height:80px; border-radius:50%;
     background:radial-gradient(circle, var(--teal-50) 0%, rgba(224,247,247,0) 72%);
   }
-  .matloob-marketing-root .hero-illo svg{width:78%; height:78%;}
-  .matloob-marketing-root .hero-illo-lg{width:96px; height:96px;}
-  .matloob-marketing-root .hero-illo-sm{width:46px; height:46px;}
+  .matloob-marketing-root .hero-illo svg{width:80%; height:80%;}
+  .matloob-marketing-root .hero-illo-lg{width:128px; height:128px;}
+  .matloob-marketing-root .hero-illo-sm{width:62px; height:62px;}
 
-  /* Left cluster: house (large, upper) → car (mid, lower & farther
-     out) → phone/package (small, near the bottom, varying depth). */
-  .matloob-marketing-root .hero-pos-house{top:2%; left:9%;}
-  .matloob-marketing-root .hero-pos-car{top:38%; left:1%;}
-  .matloob-marketing-root .hero-pos-phone{top:70%; left:14%;}
-  .matloob-marketing-root .hero-pos-package{top:66%; left:29%;}
+  /* Left cluster: organic, non-columnar — house sits high and closest
+     in, car drops lower and drifts outward, phone/package tuck in
+     near the bottom at different depths so nothing lines up
+     vertically. */
+  .matloob-marketing-root .hero-pos-house{top:0%; left:17%;}
+  .matloob-marketing-root .hero-pos-car{top:34%; left:2%;}
+  .matloob-marketing-root .hero-pos-phone{top:64%; left:20%;}
+  .matloob-marketing-root .hero-pos-package{top:58%; left:31%;}
 
-  /* Right cluster: laptop (large, upper) → toolbox (mid, lower &
-     farther out) → luggage/dog (small, near the bottom). */
-  .matloob-marketing-root .hero-pos-laptop{top:0%; right:8%;}
-  .matloob-marketing-root .hero-pos-toolbox{top:36%; right:0%;}
-  .matloob-marketing-root .hero-pos-luggage{top:68%; right:27%;}
-  .matloob-marketing-root .hero-pos-dog{top:72%; right:13%;}
+  /* Right cluster: mirrors the left's organic staggering. */
+  .matloob-marketing-root .hero-pos-laptop{top:-2%; right:15%;}
+  .matloob-marketing-root .hero-pos-toolbox{top:32%; right:1%;}
+  .matloob-marketing-root .hero-pos-luggage{top:62%; right:29%;}
+  .matloob-marketing-root .hero-pos-dog{top:56%; right:18%;}
 
   .matloob-marketing-root .hero-copy-v2{max-width:640px; text-align:center; position:relative; z-index:5; margin:0 auto;}
   .matloob-marketing-root p.hero-sub{margin-inline:auto;}
@@ -254,17 +255,17 @@
      the scrolling items filling the rest. Pure CSS animation only (no
      JS, no heavy work) — the track's content is duplicated once by
      the renderer so the loop is seamless. */
-  .matloob-marketing-root .ticker-section-wrap{position:relative; z-index:1; padding:0 0 34px;}
+  .matloob-marketing-root .ticker-section-wrap{position:relative; z-index:1; padding:0 0 14px;}
   .matloob-marketing-root .ticker-pill{
-    display:flex; align-items:center; gap:10px;
+    display:flex; align-items:center; gap:8px;
     max-width:920px; margin:0 auto;
     background:var(--surface); border:1px solid var(--border);
     border-radius:999px; box-shadow:var(--shadow-md);
-    padding:5px 5px 5px 18px;
+    padding:4px 4px 4px 16px;
   }
   .matloob-marketing-root .ticker-label{
     flex-shrink:0; display:inline-flex; align-items:center; gap:5px;
-    padding:7px 16px; border-radius:999px;
+    padding:6px 16px; border-radius:999px;
     background:var(--grad-primary); color:#fff;
     font-size:12px; font-weight:800; white-space:nowrap;
   }
@@ -305,8 +306,8 @@
   .matloob-marketing-root .section-head a.see-all:hover{gap:10px;}
 
   /* ===================== CATEGORIES ===================== */
-  .matloob-marketing-root section.categories{padding:80px 0; position:relative; z-index:1;}
-  .matloob-marketing-root .cat-grid{display:grid; grid-template-columns:repeat(8,1fr); gap:16px;}
+  .matloob-marketing-root section.categories{padding:22px 0 64px; position:relative; z-index:1;}
+  .matloob-marketing-root .cat-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:16px;}
   .matloob-marketing-root .cat-card{
     position:relative; border-radius:20px; overflow:hidden; aspect-ratio:1/1.05;
     box-shadow:var(--shadow-sm);
@@ -436,7 +437,7 @@
      keeps hero images visible+scaled as viewport narrows toward tablet
      ============================================================ */
   @media (max-width: 1100px){
-    .matloob-marketing-root .cat-grid{grid-template-columns:repeat(4,1fr);}
+    .matloob-marketing-root .cat-grid{grid-template-columns:repeat(3,1fr);}
   }
 
   /* ============================================================
@@ -461,9 +462,9 @@
     .matloob-marketing-root section.hero{padding:0;}
     .matloob-marketing-root section.hero .wrap{padding:0 18px;}
     .matloob-marketing-root .hero-v2-wrap{min-height:auto; padding:14px 0 26px;}
-    .matloob-marketing-root .hero-illo{width:44px; height:44px;}
-    .matloob-marketing-root .hero-illo-lg{width:56px; height:56px;}
-    .matloob-marketing-root .hero-illo-sm{width:36px; height:36px;}
+    .matloob-marketing-root .hero-illo{width:58px; height:58px;}
+    .matloob-marketing-root .hero-illo-lg{width:74px; height:74px;}
+    .matloob-marketing-root .hero-illo-sm{width:46px; height:46px;}
 
     .matloob-marketing-root h1.hero-title{font-size:23px; line-height:1.42; margin-bottom:12px;}
     .matloob-marketing-root p.hero-sub{font-size:12.5px; margin-bottom:22px; max-width:100%; line-height:1.75;}
@@ -479,8 +480,8 @@
     .matloob-marketing-root .section-eyebrow{font-size:11.5px;}
 
     /* ---- Categories: bigger, cleaner icons (not shrunken) ---- */
-    .matloob-marketing-root section.categories{padding:40px 0;}
-    .matloob-marketing-root .cat-grid{grid-template-columns:repeat(4,1fr); gap:10px;}
+    .matloob-marketing-root section.categories{padding:14px 0 32px;}
+    .matloob-marketing-root .cat-grid{grid-template-columns:repeat(3,1fr); gap:10px;}
     .matloob-marketing-root .cat-card{border-radius:16px;}
     .matloob-marketing-root .cat-overlay{padding:12px 6px;}
     .matloob-marketing-root .cat-overlay span{font-size:11px; letter-spacing:.1px;}
