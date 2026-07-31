@@ -132,6 +132,21 @@ export const ROLE_MANAGE_PERMISSION = "roles:manage";
  */
 export const AUDIT_LOG_VIEW_PERMISSION = "audit-log:view";
 
+/**
+ * Requests Admin Module: granular permissions beyond the existing
+ * `requests:view` (already ADMIN + MODERATOR since Checkpoint 01).
+ * Editing a request's fields, changing its status/publishing it,
+ * soft-deleting it, and featuring/unfeaturing it are each their own
+ * permission so a custom `AdminRole` (see admin-role.service.ts) can
+ * grant a MODERATOR exactly the subset of these it needs — e.g. a
+ * "content moderator" role might get `requests:publish` without
+ * `requests:delete`.
+ */
+export const REQUEST_EDIT_PERMISSION = "requests:edit";
+export const REQUEST_DELETE_PERMISSION = "requests:delete";
+export const REQUEST_PUBLISH_PERMISSION = "requests:publish";
+export const REQUEST_FEATURE_PERMISSION = "requests:feature";
+
 export function hasPermission(role: AdminRole, permission: string): boolean {
   const granted = ADMIN_PERMISSIONS[role];
   return granted.includes("*") || granted.includes(permission);
@@ -163,6 +178,10 @@ export interface PermissionCatalogEntry {
 export const PERMISSION_CATALOG: PermissionCatalogEntry[] = [
   { permission: "dashboard:view", label: "عرض لوحة التحكم" },
   { permission: "requests:view", label: "عرض الطلبات" },
+  { permission: REQUEST_EDIT_PERMISSION, label: "تعديل الطلبات" },
+  { permission: REQUEST_PUBLISH_PERMISSION, label: "نشر ورفض الطلبات" },
+  { permission: REQUEST_FEATURE_PERMISSION, label: "تمييز الطلبات" },
+  { permission: REQUEST_DELETE_PERMISSION, label: "حذف الطلبات" },
   { permission: "requests:moderate", label: "الإشراف على الطلبات" },
   { permission: "offers:view", label: "عرض العروض" },
   { permission: "users:view", label: "عرض المستخدمين" },

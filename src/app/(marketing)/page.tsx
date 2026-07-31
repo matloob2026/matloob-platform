@@ -22,6 +22,7 @@ import {
 import { resolveSeo, toMetadata } from "@/lib/seo";
 import { getPublicCategories } from "@/lib/category-public-content";
 import { getPublicBlogListing } from "@/lib/blog-public-content";
+import { requestService } from "@/services/request.service";
 import { renderHomepageHtml } from "./homepage-render";
 
 const FALLBACK_TITLE = "مطلوب | قولنا إيه اللي محتاجه";
@@ -137,7 +138,7 @@ export default async function HomePage() {
     "utf-8"
   );
 
-  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, blogListing] =
+  const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, blogListing, featuredRequests] =
     await Promise.all([
       getPublicHomepageMainContent(),
       getPublicHomepageStats(),
@@ -148,6 +149,7 @@ export default async function HomePage() {
       getPublicSiteSocial(),
       getPublicCategories(),
       getPublicBlogListing({ page: 1 }),
+      requestService.getFeaturedForHomepage(3),
     ]);
 
   const bodyHtml = renderHomepageHtml(rawHtml, {
@@ -160,6 +162,7 @@ export default async function HomePage() {
     social,
     categories,
     blogPosts: blogListing.posts,
+    featuredRequests,
   });
 
   return (

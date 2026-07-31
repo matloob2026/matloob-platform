@@ -14,6 +14,7 @@
  */
 
 import type { NotificationItem } from "@/types/domain";
+import { prisma } from "@/lib/prisma";
 
 export type NotificationType =
   | "NEW_OFFER"
@@ -44,18 +45,61 @@ export interface NotificationService {
 }
 
 /**
- * TODO (Phase 2): implement fan-out per channel behind a queue
- * (see docs/ARCHITECTURE.md "Background Jobs" section) so a slow email
- * provider never blocks the request that triggered the notification.
+ * Implements the `NotificationService` contract declared above (was a
+ * Phase 1 stub that threw "Not yet implemented" on every method) — the
+ * SAME class, finished, not a second/parallel notification system.
+ * Reused as-is by the Requests Admin Module (see
+ * src/services/admin/request-admin.service.ts) for "notify the
+ * request owner whenever an admin changes a request's status."
  */
 export class PrismaNotificationService implements NotificationService {
-  async notify(_input: NotifyInput): Promise<void> {
-    throw new Error("Not yet implemented — Phase 1 is architecture only.");
+  async notify(input: NotifyInput): Promise<void> {
+    const channels = input.channels ?? ["IN_APP"];
+    await prisma.notification.createMany({
+      data: channels.map((channel) => ({
+        userId: input.userId,
+        type: input.type,
+        channel,
+        title: input.title,
+        body: input.body,
+        linkUrl: input.linkUrl ?? null,
+        metadata: input.metadata ?? undefined,
+      })),
+    });
   }
-  async listForUser(_userId: string, _unreadOnly?: boolean): Promise<NotificationItem[]> {
-    throw new Error("Not yet implemented — Phase 1 is architecture only.");
+
+  async listForUser(userId: string, unreadOnly?: boolean): Promise<NotificationItem[]> {
+    const rows = await prisma.notification.findMany({
+      where: { userId, ...(unreadOnly ? { isRead: false } : {}) },
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map(
+      (r: {
+        id: string;
+        type: string;
+        title: string;
+        body: string;
+        linkUrl: string | null;
+        isRead: boolean;
+        createdAt: Date;
+      }) => ({
+        id: r.id,
+        type: r.type,
+        title: r.title,
+        body: r.body,
+        linkUrl: r.linkUrl ?? undefined,
+        isRead: r.isRead,
+        createdAt: r.createdAt.toISOString(),
+      })
+    );
   }
-  async markRead(_notificationId: string, _userId: string): Promise<void> {
-    throw new Error("Not yet implemented — Phase 1 is architecture only.");
+
+  async markRead(notificationId: string, userId: string): Promise<void> {
+    await prisma.notification.updateMany({
+      where: { id: notificationId, userId },
+      data: { isRead: true },
+    });
   }
 }
+
+export const notificationService = new PrismaNotificationService();

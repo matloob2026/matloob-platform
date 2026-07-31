@@ -21,11 +21,13 @@ export type UserStatus = "ACTIVE" | "SUSPENDED" | "PENDING_VERIFICATION" | "BANN
 
 export type RequestStatus =
   | "DRAFT"
+  | "PENDING_REVIEW"
   | "PUBLISHED"
   | "IN_PROGRESS"
   | "FULFILLED"
   | "EXPIRED"
   | "CLOSED_BY_BUYER"
+  | "REJECTED"
   | "REMOVED_BY_ADMIN";
 
 export type OfferStatus = "PENDING" | "ACCEPTED" | "REJECTED" | "WITHDRAWN" | "EXPIRED";

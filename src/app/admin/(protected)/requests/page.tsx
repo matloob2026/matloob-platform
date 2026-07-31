@@ -1,123 +1,43 @@
-"use client";
+import { requirePermission } from "@/auth/guards";
+import { requestAdminService } from "@/services/admin/request-admin.service";
+import { categoryAdminService } from "@/services/admin/category.service";
+import { countryAdminService } from "@/services/admin/country.service";
+import { cityAdminService } from "@/services/admin/city.service";
+import { RequestsManager } from "./RequestsManager";
 
-import { useEffect, useState } from "react";
-import { PageHeader } from "@/components/admin/PageHeader";
-import { DataTable, type DataTableColumn } from "@/components/admin/DataTable";
-import { Badge } from "@/components/ui/Badge";
-import { Select } from "@/components/ui/Field";
-import { listRequestsMock, type AdminRequestRow } from "@/services/mock/requests.mock";
-import type { RequestStatus } from "@/types/domain";
+/**
+ * Requests Administration Module — the operational heart of the
+ * platform's Admin Dashboard. Real, database-backed, replacing the
+ * mock `listRequestsMock`-driven page (see
+ * src/services/admin/request-admin.service.ts for the full
+ * architecture note).
+ *
+ * `requirePermission("requests:view")` gates the page itself (ADMIN +
+ * MODERATOR, unchanged since Checkpoint 01); every mutation re-checks
+ * its own specific permission independently in actions.ts.
+ *
+ * Categories/Countries/Cities are fetched here via the EXISTING admin
+ * services (no duplicate "list categories" query) purely to populate
+ * the filter dropdowns.
+ */
+export default async function AdminRequestsPage() {
+  await requirePermission("requests:view");
 
-const STATUS_LABEL: Record<RequestStatus, string> = {
-  DRAFT: "مسودة",
-  PUBLISHED: "منشور",
-  IN_PROGRESS: "قيد التنفيذ",
-  FULFILLED: "مكتمل",
-  EXPIRED: "منتهي",
-  CLOSED_BY_BUYER: "أغلقه المشتري",
-  REMOVED_BY_ADMIN: "أزاله المدير",
-};
-const STATUS_TONE: Record<RequestStatus, "success" | "warning" | "danger" | "neutral" | "info"> = {
-  DRAFT: "neutral",
-  PUBLISHED: "info",
-  IN_PROGRESS: "warning",
-  FULFILLED: "success",
-  EXPIRED: "neutral",
-  CLOSED_BY_BUYER: "neutral",
-  REMOVED_BY_ADMIN: "danger",
-};
-
-const PAGE_SIZE = 8;
-
-export default function AdminRequestsPage() {
-  const [rows, setRows] = useState<AdminRequestRow[]>([]);
-  const [totalItems, setTotalItems] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<RequestStatus | "">("");
-  const [page, setPage] = useState(1);
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    listRequestsMock({ search, status: status || undefined, page, pageSize: PAGE_SIZE }).then(
-      (res) => {
-        if (cancelled) return;
-        setRows(res.items);
-        setTotalItems(res.totalItems);
-        setIsLoading(false);
-      }
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, [search, status, page]);
-
-  const columns: DataTableColumn<AdminRequestRow>[] = [
-    {
-      key: "title",
-      header: "الطلب",
-      render: (r) => (
-        <div>
-          <p className="font-bold text-navy-950">{r.title}</p>
-          <p className="text-xs text-text-400">{r.category} · {r.city}</p>
-        </div>
-      ),
-    },
-    { key: "owner", header: "صاحب الطلب", render: (r) => r.owner },
-    { key: "budget", header: "الميزانية", render: (r) => r.budget ?? "غير محددة" },
-    { key: "offers", header: "العروض", render: (r) => r.offerCount },
-    {
-      key: "status",
-      header: "الحالة",
-      render: (r) => <Badge tone={STATUS_TONE[r.status]}>{STATUS_LABEL[r.status]}</Badge>,
-    },
-    {
-      key: "createdAt",
-      header: "تاريخ النشر",
-      render: (r) => new Date(r.createdAt).toLocaleDateString("ar-SA"),
-    },
-  ];
+  const [counts, initialList, categories, countries, cities] = await Promise.all([
+    requestAdminService.getDashboardCounts(),
+    requestAdminService.listRequests(),
+    categoryAdminService.listCategories(),
+    countryAdminService.listCountries(),
+    cityAdminService.listCities(),
+  ]);
 
   return (
-    <div>
-      <PageHeader title="الطلبات" description="مراجعة وإدارة كل الطلبات المنشورة على المنصة" />
-
-      <DataTable
-        columns={columns}
-        rows={rows}
-        getRowId={(r) => r.id}
-        isLoading={isLoading}
-        searchValue={search}
-        onSearchChange={(v) => {
-          setSearch(v);
-          setPage(1);
-        }}
-        searchPlaceholder="بحث بعنوان الطلب..."
-        filters={
-          <Select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value as RequestStatus | "");
-              setPage(1);
-            }}
-            className="w-auto"
-          >
-            <option value="">كل الحالات</option>
-            {Object.entries(STATUS_LABEL).map(([key, label]) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </Select>
-        }
-        page={page}
-        pageSize={PAGE_SIZE}
-        totalItems={totalItems}
-        onPageChange={setPage}
-        emptyTitle="لا توجد طلبات"
-        emptyDescription="لم يتم العثور على طلبات تطابق معايير البحث الحالية."
-      />
-    </div>
+    <RequestsManager
+      counts={counts}
+      initialResult={initialList}
+      categories={categories}
+      countries={countries}
+      cities={cities}
+    />
   );
 }

@@ -57,11 +57,13 @@ enum UserStatus {
 
 enum RequestStatus {
   DRAFT // saved but not published
+  PENDING_REVIEW // Requests Admin Module: awaiting moderator approval before going live
   PUBLISHED // live, visible, accepting offers
   IN_PROGRESS // buyer has accepted an offer
   FULFILLED // completed successfully
   EXPIRED // passed its auto-expiry window
   CLOSED_BY_BUYER
+  REJECTED // Requests Admin Module: moderator declined it (distinct from REMOVED_BY_ADMIN, which is for content already live)
   REMOVED_BY_ADMIN
 }
 
@@ -424,6 +426,7 @@ model Request {
   budgetMin    Decimal?       @db.Decimal(12, 2)
   budgetMax    Decimal?       @db.Decimal(12, 2)
   status       RequestStatus  @default(DRAFT)
+  isFeatured   Boolean        @default(false) // Requests Admin Module: shown wherever the public site highlights featured requests
   viewCount    Int            @default(0)
   offerCount   Int            @default(0) // denormalized counter, kept in sync via service layer
   publishedAt  DateTime?
@@ -450,6 +453,7 @@ model Request {
 
   @@index([status, categoryId, countryId])
   @@index([ownerId])
+  @@index([isFeatured, status])
   @@map("requests")
 }
 

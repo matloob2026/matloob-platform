@@ -132,6 +132,17 @@ export interface RequestService {
   close(requestId: string, ownerId: string): Promise<void>;
 
   /**
+   * Requests Admin Module: featured requests for the public homepage —
+   * NOT scoped to a single country (unlike `list()`, which is always
+   * country-scoped for marketplace browsing), since a homepage
+   * highlight is a platform-wide showcase. Falls back to the most
+   * recent published requests when none are currently featured, so
+   * the section is never empty — same safe-fallback convention every
+   * other homepage section in this project already follows.
+   */
+  getFeaturedForHomepage(limit?: number): Promise<RequestSummary[]>;
+
+  /**
    * Increments the denormalized `offerCount` on Request whenever an
    * Offer is created/withdrawn. Called by OfferService, never invoked
    * directly from a route handler — keeps the counter's single writer
@@ -478,6 +489,29 @@ export class PrismaRequestService implements RequestService {
   async syncOfferCount(requestId: string): Promise<void> {
     const count = await prisma.offer.count({ where: { requestId, deletedAt: null } });
     await prisma.request.update({ where: { id: requestId }, data: { offerCount: count } });
+  }
+
+  async getFeaturedForHomepage(limit = 6): Promise<RequestSummary[]> {
+    const featured = await prisma.request.findMany({
+      where: { deletedAt: null, status: "PUBLISHED", isFeatured: true },
+      include: requestInclude(),
+      orderBy: { publishedAt: "desc" },
+      take: limit,
+    });
+
+    if (featured.length > 0) {
+      return featured.map((r: NonNullable<RequestRow>) => mapToSummary(r));
+    }
+
+    // Safe fallback: no request is currently featured, so show the
+    // most recent published ones instead — the section is never empty.
+    const fallback = await prisma.request.findMany({
+      where: { deletedAt: null, status: "PUBLISHED" },
+      include: requestInclude(),
+      orderBy: { publishedAt: "desc" },
+      take: limit,
+    });
+    return fallback.map((r: NonNullable<RequestRow>) => mapToSummary(r));
   }
 }
 

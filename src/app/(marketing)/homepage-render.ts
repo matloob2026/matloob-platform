@@ -34,6 +34,7 @@ import type { PublicHomepageMainContent, PublicHomepageStat, PublicTrustBadge } 
 import type { PublicStaticPageNavLink } from "@/lib/static-page-public-content";
 import type { PublicCategorySummary } from "@/lib/category-public-content";
 import type { PublicBlogPostSummary } from "@/lib/blog-public-content";
+import type { RequestSummary } from "@/types/domain";
 
 function escapeHtml(value: string): string {
   return value
@@ -155,6 +156,7 @@ export function renderHomepageHtml(
     social: { x: string | null; instagram: string | null };
     categories: PublicCategorySummary[];
     blogPosts: PublicBlogPostSummary[];
+    featuredRequests: RequestSummary[];
   }
 ): string {
   let html = bodyHtml;
@@ -321,6 +323,35 @@ export function renderHomepageHtml(
     html = html.replace(
       /<!--CMS:CATEGORIES_SEE_ALL_START-->[\s\S]*?<!--CMS:CATEGORIES_SEE_ALL_END-->/,
       `<!--CMS:CATEGORIES_SEE_ALL_START--><a href="/categories" class="see-all">عرض الكل ←</a><!--CMS:CATEGORIES_SEE_ALL_END-->`
+    );
+  }
+
+  if (content.featuredRequests.length > 0) {
+    const delayClasses = ["reveal-delay-1", "reveal-delay-2", "reveal-delay-3"];
+    const requestsGridHtml = content.featuredRequests
+      .slice(0, 3)
+      .map((req, index) => {
+        const delayClass = delayClasses[index % delayClasses.length];
+        const thumbHtml = req.coverImageUrl
+          ? `<img src="${escapeHtml(req.coverImageUrl)}" alt="${escapeHtml(req.title)}">`
+          : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#0f766e22;color:#0f766e">${CATEGORY_ICON_FALLBACK}</div>`;
+        const priceLabel =
+          req.budgetMin || req.budgetMax
+            ? `${req.budgetMin ?? ""}${req.budgetMin && req.budgetMax ? " - " : ""}${req.budgetMax ?? ""} ${req.currency?.symbol ?? ""}`.trim()
+            : "السعر عند التواصل";
+        return (
+          `<div class="req-card ${delayClass}">` +
+          `<div class="req-thumb">${thumbHtml}<span class="req-badge">${escapeHtml(req.category.name.current)}</span></div>` +
+          `<div class="req-body"><h3>${escapeHtml(req.title)}</h3>` +
+          `<p>${escapeHtml(req.description.length > 110 ? `${req.description.slice(0, 110)}…` : req.description)}</p>` +
+          `<div class="req-foot"><span class="req-price">${escapeHtml(priceLabel)}</span><span class="req-offers">${req.offerCount.toLocaleString("ar")} عروض</span></div>` +
+          `</div></div>`
+        );
+      })
+      .join("");
+    html = html.replace(
+      /<!--CMS:REQUESTS_GRID_START-->[\s\S]*?<!--CMS:REQUESTS_GRID_END-->/,
+      `<!--CMS:REQUESTS_GRID_START-->${requestsGridHtml}<!--CMS:REQUESTS_GRID_END-->`
     );
   }
 
