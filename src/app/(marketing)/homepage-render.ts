@@ -92,24 +92,6 @@ function replaceBetweenMarkers(html: string, startMarker: string, endMarker: str
   return before + replacement + after;
 }
 
-// Known icon SVGs for the platform's original 4 stats / 2 trust badges —
-// copied verbatim from the pre-Checkpoint-02 static markup so editing a
-// VALUE or LABEL through the CMS doesn't change its icon. A stat/badge
-// added later through the Admin CMS (no media management this
-// checkpoint) gets a neutral fallback icon instead of no icon at all.
-const STAT_ICONS: Record<string, string> = {
-  "طلب منشور":
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H5a2 2 0 01-2-2V5a2 2 0 012-2h9a2 2 0 012 2v4M9 21h9a2 2 0 002-2V9"/></svg>',
-  "عضو نشط":
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',
-  "طلب تم تنفيذه":
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>',
-  "طلبات جديدة اليوم":
-    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>',
-};
-const STAT_ICON_FALLBACK =
-  '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2.4 7.4H22l-6 4.3 2.3 7.3-6.3-4.5-6.3 4.5 2.3-7.3-6-4.3h7.6z"/></svg>';
-
 const TRUST_BADGE_ICONS: Record<string, string> = {
   "دفع وتواصل آمن":
     '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
@@ -217,41 +199,6 @@ export function renderHomepageHtml(
       /<!--CMS:CTA_START-->[\s\S]*?<!--CMS:CTA_END-->/,
       `<!--CMS:CTA_START-->${ctaHtml}<!--CMS:CTA_END-->`
     );
-
-    // Hero collage — each of the 9 float-card slots keeps its original
-    // stock photo untouched unless the admin picked a replacement for
-    // that specific slot (see HERO_IMAGE_SLOTS in
-    // homepage-content.service.ts and the CMS:HERO_IMG_<slot> markers
-    // in homepage-body.html).
-    for (const [slot, url] of Object.entries(content.main.heroImages)) {
-      if (!url) continue;
-      const startMarker = `<!--CMS:HERO_IMG_${slot}_START-->`;
-      const endMarker = `<!--CMS:HERO_IMG_${slot}_END-->`;
-      const pattern = new RegExp(
-        `${startMarker}<img src="[^"]*"([^>]*)>${endMarker}`
-      );
-      html = html.replace(pattern, (_match, restOfTag: string) => {
-        // Keeps the original `alt="..."` (and any other attributes)
-        // untouched — only the `src` changes.
-        return `${startMarker}<img src="${escapeHtml(url)}"${restOfTag}>${endMarker}`;
-      });
-    }
-  }
-
-  if (content.stats.length > 0) {
-    const statsHtml = content.stats
-      .map((stat) => {
-        const icon = stat.iconUrl
-          ? `<img src="${escapeHtml(stat.iconUrl)}" alt="" width="20" height="20" style="object-fit:cover;border-radius:6px" />`
-          : STAT_ICONS[stat.label] ?? STAT_ICON_FALLBACK;
-        return (
-          `<div class="stat"><span class="stat-icon">${icon}</span>` +
-          `<div><div class="stat-num" data-count="${stat.value}">0</div>` +
-          `<div class="stat-label">${escapeHtml(stat.label)}</div></div></div>`
-        );
-      })
-      .join("");
-    html = html.replace(/<!--CMS:STATS_START-->[\s\S]*?<!--CMS:STATS_END-->/, `<!--CMS:STATS_START-->${statsHtml}<!--CMS:STATS_END-->`);
   }
 
   if (content.trustBadges.length > 0) {
@@ -308,16 +255,6 @@ export function renderHomepageHtml(
     html = html.replace(
       /<!--CMS:SOCIAL_INSTAGRAM_START-->[\s\S]*?<!--CMS:SOCIAL_INSTAGRAM_END-->/,
       (match) => match.replace('href="#"', `href="${escapeHtml(content.social.instagram!)}"`)
-    );
-  }
-
-  if (content.categories.length > 0) {
-    const optionsHtml = content.categories
-      .map((category) => `<button type="button" class="hero-category-option" onclick="selectHeroCategory(this)">${escapeHtml(category.name)}</button>`)
-      .join("");
-    html = html.replace(
-      /<!--CMS:HERO_CATEGORY_OPTIONS_START-->[\s\S]*?<!--CMS:HERO_CATEGORY_OPTIONS_END-->/,
-      `<!--CMS:HERO_CATEGORY_OPTIONS_START--><div class="hero-category-dropdown" id="heroCategoryDropdown" style="display:none;position:absolute;top:calc(100% + 6px);right:0;z-index:20;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.12);padding:6px;min-width:190px;max-height:260px;overflow-y:auto">${optionsHtml}</div><!--CMS:HERO_CATEGORY_OPTIONS_END-->`
     );
   }
 
@@ -395,6 +332,33 @@ export function renderHomepageHtml(
       /<!--CMS:REQUESTS_GRID_START-->[\s\S]*?<!--CMS:REQUESTS_GRID_END-->/,
       `<!--CMS:REQUESTS_GRID_START--><div data-authenticated="${content.isAuthenticated}" style="display:contents">${requestsGridHtml}</div><!--CMS:REQUESTS_GRID_END-->`
     );
+
+    // Requests ticker — reuses this SAME already-fetched list (every
+    // published request, featured ones first, never gated on
+    // isFeatured — see request.service.ts's listAllPublished) rather
+    // than a second query. Duplicated once so the CSS marquee
+    // (`.ticker-track`, translateX(-50%)) loops seamlessly: once the
+    // first copy has fully scrolled past, the second copy is exactly
+    // where the first one started.
+    const tickerItemHtml = content.featuredRequests
+      .map((req) => {
+        const relativeTime = req.publishedAt ? formatArabicRelativeTime(new Date(req.publishedAt)) : "";
+        const cityLabel = req.city ? req.city.name.current : req.country.code;
+        return (
+          `<a href="/requests/${req.id}" class="ticker-item">` +
+          `<span class="ticker-icon">●</span> ${escapeHtml(req.title)} ` +
+          `<span class="ticker-city">· ${escapeHtml(cityLabel)}</span>` +
+          (relativeTime ? ` <span class="ticker-time">${escapeHtml(relativeTime)}</span>` : "") +
+          `</a>`
+        );
+      })
+      .join("");
+    if (tickerItemHtml) {
+      html = html.replace(
+        /<!--CMS:REQUESTS_TICKER_START-->[\s\S]*?<!--CMS:REQUESTS_TICKER_END-->/,
+        `<!--CMS:REQUESTS_TICKER_START-->${tickerItemHtml}${tickerItemHtml}<!--CMS:REQUESTS_TICKER_END-->`
+      );
+    }
   }
 
   // "عرض جميع الطلبات" — only shown once more than the 12 displayed
