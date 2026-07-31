@@ -15,6 +15,7 @@
 
 import type { NotificationItem } from "@/types/domain";
 import { prisma } from "@/lib/prisma";
+import type { InputJsonValue } from "@prisma/client/runtime/library";
 
 export type NotificationType =
   | "NEW_OFFER"
@@ -52,9 +53,37 @@ export interface NotificationService {
  * src/services/admin/request-admin.service.ts) for "notify the
  * request owner whenever an admin changes a request's status."
  */
+/**
+ * Converts the intentionally loose `NotifyInput.metadata` (a plain,
+ * caller-supplied payload — request/offer ids, strings, numbers;
+ * never functions, symbols, or class instances) into the strict
+ * `Prisma.InputJsonValue` shape `prisma.notification.createMany()`
+ * requires for the `metadata Json?` column.
+ *
+ * `Record<string, unknown>` is not structurally assignable to
+ * `InputJsonValue` — TypeScript can't prove every `unknown` value in
+ * an arbitrary record is JSON-serializable, even though every actual
+ * caller of `notify()` in this codebase only ever passes plain
+ * JSON-safe objects. This is that one, single, documented conversion
+ * point rather than a scattered or blanket `any`.
+ *
+ * Imports `InputJsonValue` from `@prisma/client/runtime/library`
+ * rather than via `Prisma.InputJsonValue` — it's the exact same type
+ * either way (a generated client's `Prisma` namespace re-exports this
+ * type from that same runtime module), but importing it directly from
+ * its stable source doesn't depend on that namespace re-export
+ * actually being present, which makes this resilient across
+ * generation states.
+ */
+function toInputJson(metadata: Record<string, unknown> | undefined): InputJsonValue | undefined {
+  if (metadata === undefined) return undefined;
+  return metadata as InputJsonValue;
+}
+
 export class PrismaNotificationService implements NotificationService {
   async notify(input: NotifyInput): Promise<void> {
     const channels = input.channels ?? ["IN_APP"];
+    const metadata = toInputJson(input.metadata);
     await prisma.notification.createMany({
       data: channels.map((channel) => ({
         userId: input.userId,
@@ -63,7 +92,7 @@ export class PrismaNotificationService implements NotificationService {
         title: input.title,
         body: input.body,
         linkUrl: input.linkUrl ?? null,
-        metadata: input.metadata ?? undefined,
+        metadata,
       })),
     });
   }
