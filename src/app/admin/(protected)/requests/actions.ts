@@ -52,6 +52,7 @@ function toActionState(err: unknown): RequestActionState {
 function revalidateRequestRoutes(requestId?: string): void {
   revalidatePath("/admin/requests");
   revalidatePath("/");
+  revalidatePath("/requests");
   if (requestId) revalidatePath(`/requests/${requestId}`);
 }
 

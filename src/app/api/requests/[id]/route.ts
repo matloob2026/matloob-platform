@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth/auth";
 import { requestService, RequestServiceError, requestServiceErrorStatus } from "@/services/request.service";
@@ -68,6 +69,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
 
   try {
     const updated = await requestService.update(id, session.user.id, parsed.data);
+    if (updated.status === "PUBLISHED") {
+      revalidatePath("/");
+      revalidatePath("/requests");
+    }
+    revalidatePath(`/requests/${id}`);
     return NextResponse.json({ data: updated }, { status: 200 });
   } catch (err) {
     if (err instanceof RequestServiceError) {
@@ -90,6 +96,9 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   try {
     await requestService.remove(id, session.user.id);
+    revalidatePath("/");
+    revalidatePath("/requests");
+    revalidatePath(`/requests/${id}`);
     return NextResponse.json({ data: { deleted: true } }, { status: 200 });
   } catch (err) {
     if (err instanceof RequestServiceError) {

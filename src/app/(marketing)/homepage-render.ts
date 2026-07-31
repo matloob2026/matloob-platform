@@ -45,6 +45,33 @@ function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** Arabic relative time for a request card's publish time (منذ ساعة /
+ * منذ 3 ساعات / منذ يوم / منذ يومين / ...) — Arabic has singular/dual/
+ * plural forms that plain `Intl.RelativeTimeFormat` doesn't get
+ * exactly right for this kind of casual "منذ" phrasing, so this
+ * spells out the four forms explicitly for each unit. Falls back to
+ * an absolute date once it's more than a month old. */
+function formatArabicRelativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  function phrase(count: number, singular: string, dual: string, plural: string, pluralWithNumber: string): string {
+    if (count === 1) return `منذ ${singular}`;
+    if (count === 2) return `منذ ${dual}`;
+    if (count >= 3 && count <= 10) return `منذ ${count.toLocaleString("ar")} ${plural}`;
+    return `منذ ${count.toLocaleString("ar")} ${pluralWithNumber}`;
+  }
+
+  if (diffMinutes < 1) return "الآن";
+  if (diffMinutes < 60) return phrase(diffMinutes, "دقيقة", "دقيقتين", "دقائق", "دقيقة");
+  if (diffHours < 24) return phrase(diffHours, "ساعة", "ساعتين", "ساعات", "ساعة");
+  if (diffDays < 30) return phrase(diffDays, "يوم", "يومين", "أيام", "يوم");
+
+  return date.toLocaleDateString("ar-SA", { year: "numeric", month: "long", day: "numeric" });
+}
+
 /** Converts admin-entered plain-text line breaks into `<br>` so a
  * multi-line subtitle still wraps the way the original hardcoded
  * (`<br>`-separated) copy did, without allowing arbitrary HTML input. */
@@ -158,6 +185,12 @@ export function renderHomepageHtml(
     blogPosts: PublicBlogPostSummary[];
     featuredRequests: RequestSummary[];
     hasMoreRequests: boolean;
+    /** Favorites — only meaningful for a signed-in visitor; the heart
+     * icon redirects a guest to login instead of calling the toggle
+     * API (see public/marketing/homepage-scripts.js's
+     * `toggleFavorite`). */
+    isAuthenticated: boolean;
+    favoritedRequestIds: Set<string>;
   }
 ): string {
   let html = bodyHtml;
@@ -335,23 +368,32 @@ export function renderHomepageHtml(
         const thumbHtml = req.coverImageUrl
           ? `<img src="${escapeHtml(req.coverImageUrl)}" alt="${escapeHtml(req.title)}">`
           : `<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;background:#0f766e22;color:#0f766e">${CATEGORY_ICON_FALLBACK}</div>`;
-        const priceLabel =
-          req.budgetMin || req.budgetMax
-            ? `${req.budgetMin ?? ""}${req.budgetMin && req.budgetMax ? " - " : ""}${req.budgetMax ?? ""} ${req.currency?.symbol ?? ""}`.trim()
-            : "السعر عند التواصل";
+        const relativeTime = req.publishedAt ? formatArabicRelativeTime(new Date(req.publishedAt)) : "";
+        const isFavorited = content.favoritedRequestIds.has(req.id);
+        // The heart never renders as a real link (it lives inside the
+        // card's own <a>) — stopPropagation keeps clicking it from
+        // also navigating to the request page.
+        const heartHtml =
+          `<button type="button" class="req-bookmark${isFavorited ? " req-bookmark-active" : ""}" ` +
+          `style="border:0;cursor:pointer;padding:0;font:inherit" ` +
+          `data-request-id="${escapeHtml(req.id)}" data-favorited="${isFavorited}" ` +
+          `onclick="event.preventDefault();event.stopPropagation();toggleFavorite(this)" aria-label="إضافة للمفضلة">` +
+          `<svg width="15" height="15" viewBox="0 0 24 24" fill="${isFavorited ? "currentColor" : "none"}" stroke="currentColor" stroke-width="2">` +
+          `<path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg></button>`;
         return (
           `<a href="/requests/${req.id}" class="req-card ${delayClass}">` +
-          `<div class="req-thumb">${thumbHtml}<span class="req-badge">${escapeHtml(req.category.name.current)}</span></div>` +
+          `<div class="req-thumb">${thumbHtml}<span class="req-badge">${escapeHtml(req.category.name.current)}</span>${heartHtml}` +
+          (relativeTime ? `<span class="req-time-overlay">${escapeHtml(relativeTime)}</span>` : "") +
+          `</div>` +
           `<div class="req-body"><h3>${escapeHtml(req.title)}</h3>` +
-          `<p>${escapeHtml(req.description.length > 110 ? `${req.description.slice(0, 110)}…` : req.description)}</p>` +
-          `<div class="req-foot"><span class="req-price">${escapeHtml(priceLabel)}</span><span class="req-offers">${req.offerCount.toLocaleString("ar")} عروض</span></div>` +
+          `<p>${escapeHtml(req.city ? req.city.name.current : req.country.code)}</p>` +
           `</div></a>`
         );
       })
       .join("");
     html = html.replace(
       /<!--CMS:REQUESTS_GRID_START-->[\s\S]*?<!--CMS:REQUESTS_GRID_END-->/,
-      `<!--CMS:REQUESTS_GRID_START-->${requestsGridHtml}<!--CMS:REQUESTS_GRID_END-->`
+      `<!--CMS:REQUESTS_GRID_START--><div data-authenticated="${content.isAuthenticated}" style="display:contents">${requestsGridHtml}</div><!--CMS:REQUESTS_GRID_END-->`
     );
   }
 

@@ -23,6 +23,8 @@ import { resolveSeo, toMetadata } from "@/lib/seo";
 import { getPublicCategories } from "@/lib/category-public-content";
 import { getPublicBlogListing } from "@/lib/blog-public-content";
 import { requestService } from "@/services/request.service";
+import { favoriteService } from "@/services/favorite.service";
+import { auth } from "@/auth/auth";
 import { renderHomepageHtml } from "./homepage-render";
 
 const FALLBACK_TITLE = "مطلوب | قولنا إيه اللي محتاجه";
@@ -138,6 +140,8 @@ export default async function HomePage() {
     "utf-8"
   );
 
+  const session = await auth();
+
   const [main, stats, trustBadges, footerStaticPageNavLinks, mainNavStaticPageLinks, activeKnownPageSlugs, social, categories, blogListing, requestsResult] =
     await Promise.all([
       getPublicHomepageMainContent(),
@@ -152,6 +156,16 @@ export default async function HomePage() {
       requestService.listAllPublished(1, 12),
     ]);
 
+  // Favorites: only relevant for a signed-in visitor, and only ever
+  // checked for the exact requests being rendered — one batched query,
+  // never one per card.
+  const favoritedRequestIds = session?.user?.id
+    ? await favoriteService.listFavoritedRequestIds(
+        session.user.id,
+        requestsResult.items.map((r) => r.id)
+      )
+    : new Set<string>();
+
   const bodyHtml = renderHomepageHtml(rawHtml, {
     main,
     stats,
@@ -164,6 +178,8 @@ export default async function HomePage() {
     blogPosts: blogListing.posts,
     featuredRequests: requestsResult.items,
     hasMoreRequests: requestsResult.totalItems > requestsResult.items.length,
+    isAuthenticated: Boolean(session?.user?.id),
+    favoritedRequestIds,
   });
 
   return (

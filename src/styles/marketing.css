@@ -383,7 +383,7 @@
     transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease, border-color .3s ease;
   }
   .matloob-marketing-root .req-card:hover{transform:translateY(-5px); box-shadow:var(--shadow-card); border-color:var(--teal-300);}
-  .matloob-marketing-root .req-thumb{position:relative; height:132px; overflow:hidden;}
+  .matloob-marketing-root .req-thumb{position:relative; height:112px; overflow:hidden;}
   .matloob-marketing-root .req-thumb img{width:100%; height:100%; object-fit:cover; transition:transform .6s ease;}
   .matloob-marketing-root .req-card:hover .req-thumb img{transform:scale(1.04);}
   .matloob-marketing-root .req-badge{
@@ -400,6 +400,8 @@
     box-shadow:var(--shadow-sm); transition:all .25s ease;
   }
   .matloob-marketing-root .req-bookmark:hover{background:#fff; color:var(--teal-600); transform:scale(1.08);}
+  .matloob-marketing-root .req-bookmark-active{color:#e11d48;}
+  .matloob-marketing-root .req-bookmark-active:hover{color:#e11d48;}
   .matloob-marketing-root .req-time-overlay{
     position:absolute; bottom:9px; right:10px;
     font-size:10px; font-weight:600; color:#fff;
@@ -559,7 +561,7 @@
     .matloob-marketing-root section.requests{padding:6px 0 44px;}
     .matloob-marketing-root .req-grid{grid-template-columns:repeat(2,1fr); gap:12px;}
     .matloob-marketing-root .req-card{border-radius:16px;}
-    .matloob-marketing-root .req-thumb{height:100px;}
+    .matloob-marketing-root .req-thumb{height:84px;}
     .matloob-marketing-root .req-badge{top:8px; right:8px; font-size:9.5px; padding:4px 9px;}
     .matloob-marketing-root .req-bookmark{top:8px; left:8px; width:26px; height:26px; border-radius:8px;}
     .matloob-marketing-root .req-bookmark svg{width:12px; height:12px;}

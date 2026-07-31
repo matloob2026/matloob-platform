@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth/auth";
 import { requestService, RequestServiceError, requestServiceErrorStatus } from "@/services/request.service";
@@ -43,6 +44,15 @@ export async function POST(request: Request) {
     // Every request is associated with the authenticated session's
     // user id, never a client-supplied ownerId.
     const created = await requestService.create({ ...parsed.data, ownerId: session.user.id });
+    // A newly published request must appear on the homepage and the
+    // public listing right away — not only after some unrelated admin
+    // action happens to revalidate "/" (e.g. featuring a different
+    // request), which was the actual cause of "a request only shows
+    // up once it's marked Featured".
+    if (created.status === "PUBLISHED") {
+      revalidatePath("/");
+      revalidatePath("/requests");
+    }
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (err) {
     if (err instanceof RequestServiceError) {

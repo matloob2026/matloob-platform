@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth/auth";
 import { requestService, RequestServiceError, requestServiceErrorStatus } from "@/services/request.service";
 import type { ApiError } from "@/types/domain";
@@ -13,6 +14,13 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
 
   try {
     await requestService.close(id, session.user.id);
+    // A closed request is already excluded by the homepage/listing
+    // query's `status: "PUBLISHED"` filter — this just makes it
+    // disappear immediately instead of lagging until an unrelated
+    // action happens to revalidate these paths.
+    revalidatePath("/");
+    revalidatePath("/requests");
+    revalidatePath(`/requests/${id}`);
     return NextResponse.json({ data: { closed: true } }, { status: 200 });
   } catch (err) {
     if (err instanceof RequestServiceError) {

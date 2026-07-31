@@ -50,6 +50,50 @@
     if(!select.contains(e.target)) menu.style.display = 'none';
   });
 
+  // Favorites — heart icon on every homepage request card (see
+  // CMS:REQUESTS_GRID markers / renderHomepageHtml). Reuses the
+  // existing Favorite model via POST /api/favorites (see
+  // src/services/favorite.service.ts) — a guest is sent to /login
+  // instead of calling the API; a signed-in user's heart updates
+  // immediately (optimistic), then confirms/reverts based on the
+  // actual server response, without ever reloading the page.
+  function toggleFavorite(btn){
+    const grid = btn.closest('[data-authenticated]');
+    const isAuthenticated = grid && grid.getAttribute('data-authenticated') === 'true';
+    if(!isAuthenticated){
+      window.location.href = '/login?callbackUrl=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+
+    const requestId = btn.getAttribute('data-request-id');
+    const wasFavorited = btn.getAttribute('data-favorited') === 'true';
+    const nowFavorited = !wasFavorited;
+
+    // Optimistic UI update — instant, no waiting on the network.
+    btn.setAttribute('data-favorited', String(nowFavorited));
+    btn.classList.toggle('req-bookmark-active', nowFavorited);
+    const svgPath = btn.querySelector('svg');
+    if(svgPath) svgPath.setAttribute('fill', nowFavorited ? 'currentColor' : 'none');
+
+    fetch('/api/favorites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestId: requestId })
+    }).then(function(res){
+      if(!res.ok){
+        // Revert on failure — keep the UI honest if the request
+        // didn't actually succeed (e.g. session expired mid-click).
+        btn.setAttribute('data-favorited', String(wasFavorited));
+        btn.classList.toggle('req-bookmark-active', wasFavorited);
+        if(svgPath) svgPath.setAttribute('fill', wasFavorited ? 'currentColor' : 'none');
+      }
+    }).catch(function(){
+      btn.setAttribute('data-favorited', String(wasFavorited));
+      btn.classList.toggle('req-bookmark-active', wasFavorited);
+      if(svgPath) svgPath.setAttribute('fill', wasFavorited ? 'currentColor' : 'none');
+    });
+  }
+
   // Pressing the CTA transfers the written request straight into the
   // Create Request flow instead of "searching" existing listings.
   function goToCreateRequest(){
