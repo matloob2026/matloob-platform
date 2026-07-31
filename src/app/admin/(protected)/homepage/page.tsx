@@ -71,9 +71,9 @@ const HERO_IMAGE_SLOT_LABELS: { slot: HeroImageSlot; label: string }[] = [
   { slot: "car", label: "سيارة" },
   { slot: "house", label: "منزل" },
   { slot: "phone", label: "جوال" },
-  { slot: "package", label: "طرد" },
+  { slot: "package", label: "مكتب / وظائف" },
   { slot: "laptop", label: "لابتوب" },
-  { slot: "dog", label: "كلب" },
+  { slot: "dog", label: "قطة" },
   { slot: "luggage", label: "حقيبة سفر" },
   { slot: "toolbox", label: "صندوق أدوات" },
 ];

@@ -168,13 +168,13 @@
   .matloob-marketing-root section.hero{
     position:relative; overflow:hidden;
     background:var(--grad-hero-bg);
-    padding:31px 0 0;
+    padding:25px 0 0;
     z-index:1;
   }
   .matloob-marketing-root .hero-v2-wrap{
     position:relative; z-index:2;
     display:flex; align-items:center; justify-content:center;
-    min-height:156px; padding:4px 0 18px;
+    min-height:128px; padding:4px 0 14px;
   }
 
   /* ---------- premium static 2D vector illustrations, scattered
@@ -184,33 +184,33 @@
      animation of any kind. ---------- */
   .matloob-marketing-root .hero-connectors{
     position:absolute; inset:0; width:100%; height:100%; z-index:0;
-    opacity:.7; pointer-events:none;
+    opacity:.9; pointer-events:none;
   }
   .matloob-marketing-root .hero-illustrations{position:absolute; inset:0; z-index:1; pointer-events:none;}
   .matloob-marketing-root .hero-illo{
     position:absolute;
     display:flex; align-items:center; justify-content:center;
-    width:80px; height:80px; border-radius:50%;
+    width:108px; height:108px; border-radius:50%;
     background:radial-gradient(circle, var(--teal-50) 0%, rgba(224,247,247,0) 72%);
   }
   .matloob-marketing-root .hero-illo svg{width:80%; height:80%;}
-  .matloob-marketing-root .hero-illo-lg{width:128px; height:128px;}
-  .matloob-marketing-root .hero-illo-sm{width:62px; height:62px;}
+  .matloob-marketing-root .hero-illo-lg{width:173px; height:173px;}
+  .matloob-marketing-root .hero-illo-sm{width:84px; height:84px;}
 
   /* Left cluster: organic, non-columnar — house sits high and closest
      in, car drops lower and drifts outward, phone/package tuck in
      near the bottom at different depths so nothing lines up
      vertically. */
-  .matloob-marketing-root .hero-pos-house{top:0%; left:17%;}
-  .matloob-marketing-root .hero-pos-car{top:34%; left:2%;}
-  .matloob-marketing-root .hero-pos-phone{top:64%; left:20%;}
-  .matloob-marketing-root .hero-pos-package{top:58%; left:31%;}
+  .matloob-marketing-root .hero-pos-house{top:0%; left:19%;}
+  .matloob-marketing-root .hero-pos-car{top:26%; left:4%;}
+  .matloob-marketing-root .hero-pos-phone{top:54%; left:21%;}
+  .matloob-marketing-root .hero-pos-package{top:50%; left:33%;}
 
   /* Right cluster: mirrors the left's organic staggering. */
-  .matloob-marketing-root .hero-pos-laptop{top:-2%; right:15%;}
-  .matloob-marketing-root .hero-pos-toolbox{top:32%; right:1%;}
-  .matloob-marketing-root .hero-pos-luggage{top:62%; right:29%;}
-  .matloob-marketing-root .hero-pos-dog{top:56%; right:18%;}
+  .matloob-marketing-root .hero-pos-laptop{top:-2%; right:17%;}
+  .matloob-marketing-root .hero-pos-toolbox{top:24%; right:3%;}
+  .matloob-marketing-root .hero-pos-luggage{top:52%; right:31%;}
+  .matloob-marketing-root .hero-pos-dog{top:48%; right:19%;}
 
   .matloob-marketing-root .hero-copy-v2{max-width:640px; text-align:center; position:relative; z-index:5; margin:0 auto;}
   .matloob-marketing-root p.hero-sub{margin-inline:auto;}
@@ -307,23 +307,29 @@
 
   /* ===================== CATEGORIES ===================== */
   .matloob-marketing-root section.categories{padding:22px 0 64px; position:relative; z-index:1;}
-  .matloob-marketing-root .cat-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:16px;}
+  .matloob-marketing-root .cat-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:14px;}
   .matloob-marketing-root .cat-card{
-    position:relative; border-radius:20px; overflow:hidden; aspect-ratio:1/1.05;
-    box-shadow:var(--shadow-sm);
-    transition:transform .4s cubic-bezier(.2,.8,.2,1), box-shadow .4s ease;
+    display:flex; flex-direction:column; align-items:center;
+    background:var(--surface); border:1px solid var(--border); border-radius:18px;
+    box-shadow:var(--shadow-sm); padding:0 0 12px;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1), box-shadow .3s ease;
   }
-  .matloob-marketing-root .cat-card img{width:100%; height:100%; object-fit:cover; transition:transform .6s ease;}
-  .matloob-marketing-root .cat-card:hover{transform:translateY(-8px); box-shadow:var(--shadow-card);}
-  .matloob-marketing-root .cat-card:hover img{transform:scale(1.12);}
-  .matloob-marketing-root .cat-overlay{
-    position:absolute; inset:0;
-    background:linear-gradient(0deg, rgba(8,18,40,.88) 0%, rgba(8,18,40,.15) 55%, rgba(8,18,40,.05) 100%);
-    display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
-    padding:16px 8px; text-align:center;
+  .matloob-marketing-root .cat-card:hover{transform:translateY(-4px); box-shadow:var(--shadow-card);}
+  .matloob-marketing-root .cat-card-media{
+    width:100%; aspect-ratio:1/0.82; overflow:hidden;
+    border-radius:18px 18px 0 0;
   }
-  .matloob-marketing-root .cat-overlay .cat-ic{display:none;}
-  .matloob-marketing-root .cat-overlay span{color:#fff; font-size:13px; font-weight:700;}
+  .matloob-marketing-root .cat-card-media img{width:100%; height:100%; object-fit:cover; transition:transform .5s ease;}
+  .matloob-marketing-root .cat-card:hover .cat-card-media img{transform:scale(1.08);}
+  .matloob-marketing-root .cat-card-badge{
+    flex-shrink:0; margin-top:-16px; z-index:2;
+    display:flex; align-items:center; justify-content:center;
+    width:34px; height:34px; border-radius:50%; overflow:hidden;
+    background:var(--surface); box-shadow:var(--shadow-sm); color:var(--teal-600);
+  }
+  .matloob-marketing-root .cat-card-body{text-align:center; padding:5px 8px 0;}
+  .matloob-marketing-root .cat-card-body h3{font-size:12.5px; font-weight:800; color:var(--navy-950); margin:0 0 1px;}
+  .matloob-marketing-root .cat-card-body p{font-size:11px; font-weight:500; color:var(--text-400); margin:0;}
 
   /* ===================== LATEST REQUESTS ===================== */
   .matloob-marketing-root section.requests{padding:20px 0 88px; position:relative; z-index:1;}
@@ -462,9 +468,9 @@
     .matloob-marketing-root section.hero{padding:0;}
     .matloob-marketing-root section.hero .wrap{padding:0 18px;}
     .matloob-marketing-root .hero-v2-wrap{min-height:auto; padding:14px 0 26px;}
-    .matloob-marketing-root .hero-illo{width:58px; height:58px;}
-    .matloob-marketing-root .hero-illo-lg{width:74px; height:74px;}
-    .matloob-marketing-root .hero-illo-sm{width:46px; height:46px;}
+    .matloob-marketing-root .hero-illo{width:78px; height:78px;}
+    .matloob-marketing-root .hero-illo-lg{width:100px; height:100px;}
+    .matloob-marketing-root .hero-illo-sm{width:62px; height:62px;}
 
     .matloob-marketing-root h1.hero-title{font-size:23px; line-height:1.42; margin-bottom:12px;}
     .matloob-marketing-root p.hero-sub{font-size:12.5px; margin-bottom:22px; max-width:100%; line-height:1.75;}
@@ -479,12 +485,15 @@
     .matloob-marketing-root .section-head h2{font-size:20px;}
     .matloob-marketing-root .section-eyebrow{font-size:11.5px;}
 
-    /* ---- Categories: bigger, cleaner icons (not shrunken) ---- */
+    /* ---- Categories: compact card, smaller badge/text ---- */
     .matloob-marketing-root section.categories{padding:14px 0 32px;}
     .matloob-marketing-root .cat-grid{grid-template-columns:repeat(3,1fr); gap:10px;}
-    .matloob-marketing-root .cat-card{border-radius:16px;}
-    .matloob-marketing-root .cat-overlay{padding:12px 6px;}
-    .matloob-marketing-root .cat-overlay span{font-size:11px; letter-spacing:.1px;}
+    .matloob-marketing-root .cat-card{border-radius:14px;}
+    .matloob-marketing-root .cat-card-media{border-radius:14px 14px 0 0;}
+    .matloob-marketing-root .cat-card-badge{width:28px; height:28px; margin-top:-13px;}
+    .matloob-marketing-root .cat-card-badge svg{width:13px; height:13px;}
+    .matloob-marketing-root .cat-card-body h3{font-size:11.5px;}
+    .matloob-marketing-root .cat-card-body p{font-size:10px;}
 
     /* ---- Latest Requests: compact cards, 2 per row on mobile ---- */
     .matloob-marketing-root section.requests{padding:6px 0 44px;}
@@ -578,7 +587,9 @@
        experience" over decorative flourishes. */
 
     .matloob-marketing-root .cat-grid{grid-template-columns:repeat(3,1fr); gap:10px;}
-    .matloob-marketing-root .cat-overlay span{font-size:11px;}
+    .matloob-marketing-root .cat-card-badge{width:26px; height:26px; margin-top:-12px;}
+    .matloob-marketing-root .cat-card-body h3{font-size:11px;}
+    .matloob-marketing-root .cat-card-body p{font-size:9.5px;}
 
     .matloob-marketing-root .footer-grid{gap:20px;}
     .matloob-marketing-root .footer-grid > div{min-width:42%;}
