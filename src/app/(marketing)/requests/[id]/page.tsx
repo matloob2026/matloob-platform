@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth/auth";
 import { requestService } from "@/services/request.service";
@@ -8,6 +9,20 @@ import { RequestOwnerActions } from "@/components/requests/RequestOwnerActions";
 import { RequestImageManager } from "@/components/media/RequestImageManager";
 import Image from "next/image";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import type { RequestStatus } from "@/types/domain";
+
+/** Statuses visible to anyone other than the request's own owner —
+ * everything a published request can still become later in its
+ * lifecycle (in progress, fulfilled, expired, closed) stays visible;
+ * a draft, a pending-review submission, or something an admin
+ * rejected/removed is only ever visible to its owner. */
+const PUBLICLY_VISIBLE_STATUSES: RequestStatus[] = [
+  "PUBLISHED",
+  "IN_PROGRESS",
+  "FULFILLED",
+  "EXPIRED",
+  "CLOSED_BY_BUYER",
+];
 
 export async function generateMetadata({
   params,
@@ -36,9 +51,20 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
   const session = await auth();
   const isOwner = session?.user?.id === found.owner.id;
 
-  // Same visibility rule as GET /api/requests/[id]: a draft is only
-  // visible to its own owner.
-  if (found.status === "DRAFT" && !isOwner) notFound();
+  // Same visibility rule as GET /api/requests/[id], extended to cover
+  // every status that isn't meant to be publicly visible yet (or
+  // anymore) — a draft, a pending-review submission, or something an
+  // admin rejected/removed stays owner-only; every other status
+  // (published and everything further along its lifecycle) is
+  // visible to anyone.
+  if (!isOwner && !PUBLICLY_VISIBLE_STATUSES.includes(found.status)) notFound();
+
+  const similarPage = await requestService.list({
+    countryId: found.country.id,
+    categoryId: found.category.id,
+    pageSize: 4,
+  });
+  const similarRequests = similarPage.items.filter((r) => r.id !== found.id).slice(0, 3);
 
   return (
     <main dir="rtl" className="min-h-screen bg-surface-muted px-4 py-10 sm:py-16">
@@ -106,6 +132,26 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
         {isOwner && <RequestOwnerActions requestId={found.id} status={found.status} />}
         {isOwner && <RequestImageManager requestId={found.id} initialImages={found.media} />}
       </Card>
+
+      {similarRequests.length > 0 && (
+        <div className="mx-auto mt-8 max-w-2xl">
+          <h2 className="mb-4 font-display text-lg font-bold text-navy-950">طلبات مشابهة</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {similarRequests.map((r) => (
+              <Link key={r.id} href={`/requests/${r.id}`} className="block">
+                <Card className="h-full transition hover:shadow-card-lg">
+                  {r.coverImageUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={r.coverImageUrl} alt={r.title} className="mb-3 h-28 w-full rounded-lg object-cover" />
+                  )}
+                  <p className="text-sm font-bold text-navy-950">{r.title}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-text-500">{r.description}</p>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </main>
   );
 }

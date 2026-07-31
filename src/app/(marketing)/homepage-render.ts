@@ -340,12 +340,12 @@ export function renderHomepageHtml(
             ? `${req.budgetMin ?? ""}${req.budgetMin && req.budgetMax ? " - " : ""}${req.budgetMax ?? ""} ${req.currency?.symbol ?? ""}`.trim()
             : "السعر عند التواصل";
         return (
-          `<div class="req-card ${delayClass}">` +
+          `<a href="/requests/${req.id}" class="req-card ${delayClass}">` +
           `<div class="req-thumb">${thumbHtml}<span class="req-badge">${escapeHtml(req.category.name.current)}</span></div>` +
           `<div class="req-body"><h3>${escapeHtml(req.title)}</h3>` +
           `<p>${escapeHtml(req.description.length > 110 ? `${req.description.slice(0, 110)}…` : req.description)}</p>` +
           `<div class="req-foot"><span class="req-price">${escapeHtml(priceLabel)}</span><span class="req-offers">${req.offerCount.toLocaleString("ar")} عروض</span></div>` +
-          `</div></div>`
+          `</div></a>`
         );
       })
       .join("");
