@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { User, ClipboardList, LogOut, ChevronLeft } from "lucide-react";
+import { User, ClipboardList, LogOut, ChevronLeft, ChevronDown } from "lucide-react";
 
 export function UserMenu({
   name,
@@ -57,6 +57,11 @@ export function UserMenu({
             {initial}
           </span>
         )}
+        <ChevronDown
+          size={15}
+          strokeWidth={2.4}
+          className={`mx-1 text-text-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
       {/* Premium dropdown — 320px, 20px rounding, soft deep shadow, 200ms fade+slide */}
