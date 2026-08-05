@@ -387,52 +387,50 @@
 
   /* ===================== HOW IT WORKS + WHY MATLOOB ===================== */
   .matloob-marketing-root section.why-how{padding:0 0 24px; position:relative; z-index:1;}
-  .matloob-marketing-root .why-how-panel{
-    background:#FBF3E3; border-radius:26px; padding:38px 42px;
-    box-shadow:0 1px 2px rgba(10,30,70,.04);
+  .matloob-marketing-root .why-how-grid{display:grid; grid-template-columns:1fr 1.1fr; gap:20px; align-items:stretch;}
+  .matloob-marketing-root .how-card,
+  .matloob-marketing-root .why-card{
+    background:#fff; border:1px solid var(--border); border-radius:24px; padding:28px 30px;
+    box-shadow:0 1px 3px rgba(10,30,70,.03);
   }
-  .matloob-marketing-root .why-how-grid{display:grid; grid-template-columns:1.15fr 1fr; gap:44px; align-items:start;}
-  .matloob-marketing-root .how-col h2,
-  .matloob-marketing-root .why-col h2{
-    font-family:'Cairo',sans-serif; font-size:21px; font-weight:800; color:var(--navy-950);
-    text-align:center; margin-bottom:28px;
+  .matloob-marketing-root .how-card h2,
+  .matloob-marketing-root .why-card h2{
+    font-family:'Cairo',sans-serif; font-size:19px; font-weight:800; color:var(--navy-950);
+    text-align:center; margin-bottom:26px;
   }
 
-  /* ---- How column ---- */
+  /* ---- How card ---- */
   .matloob-marketing-root .how-row{display:flex; align-items:flex-start; justify-content:space-between;}
-  .matloob-marketing-root .how-step-v2{display:flex; flex-direction:column; align-items:center; text-align:center; flex:0 0 auto; width:118px;}
-  .matloob-marketing-root .how-step-icon-wrap{position:relative; width:72px; height:72px; margin-bottom:14px;}
+  .matloob-marketing-root .how-step-v2{display:flex; flex-direction:column; align-items:center; text-align:center; flex:0 0 auto; width:110px;}
+  .matloob-marketing-root .how-step-icon-wrap{position:relative; width:64px; height:64px; margin-bottom:12px;}
   .matloob-marketing-root .how-step-icon{
-    width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center;
   }
   .matloob-marketing-root .how-icon-blue{background:var(--accent-blue-bg); color:var(--accent-blue-fg);}
   .matloob-marketing-root .how-icon-purple{background:var(--accent-purple-bg); color:var(--accent-purple-fg);}
   .matloob-marketing-root .how-icon-gold{background:var(--accent-gold-bg); color:var(--accent-gold-fg);}
   .matloob-marketing-root .how-icon-orange{background:var(--accent-orange-bg); color:var(--accent-orange-fg);}
   .matloob-marketing-root .how-step-num{
-    position:absolute; top:-2px; right:-2px; width:24px; height:24px; border-radius:50%;
-    background:var(--teal-600); color:#fff; font-family:'Cairo',sans-serif; font-weight:800; font-size:11px;
-    display:flex; align-items:center; justify-content:center; box-shadow:0 2px 6px rgba(10,30,70,.3);
-    border:2px solid #FBF3E3;
+    position:absolute; top:-2px; right:-2px; width:22px; height:22px; border-radius:50%;
+    background:var(--teal-600); color:#fff; font-family:'Cairo',sans-serif; font-weight:800; font-size:10.5px;
+    display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(10,30,70,.25);
+    border:2px solid #fff;
   }
-  .matloob-marketing-root .how-step-v2 h3{font-size:13.5px; font-weight:800; color:var(--navy-950); margin-bottom:4px;}
-  .matloob-marketing-root .how-step-v2 p{font-size:11px; color:var(--text-500); line-height:1.5;}
+  .matloob-marketing-root .how-step-v2 h3{font-size:13px; font-weight:800; color:var(--navy-950); margin-bottom:4px;}
+  .matloob-marketing-root .how-step-v2 p{font-size:10.5px; color:var(--text-500); line-height:1.5;}
   .matloob-marketing-root .how-connector{
-    flex:1 1 auto; min-width:14px; height:0; margin-top:36px;
-    border-top:2px dashed rgba(10,30,70,.2);
+    flex:1 1 auto; min-width:10px; height:0; margin-top:32px;
+    border-top:2px dashed var(--border-strong);
   }
 
-  /* ---- Why column ---- */
-  .matloob-marketing-root .why-list{display:flex; flex-direction:column; gap:20px;}
+  /* ---- Why card ---- */
+  .matloob-marketing-root .why-list{display:flex; flex-direction:column; gap:22px;}
   .matloob-marketing-root .why-row{display:flex; align-items:center; gap:14px;}
   .matloob-marketing-root .why-row-icon{
-    flex-shrink:0; width:40px; height:40px; border-radius:50%;
+    flex-shrink:0; width:42px; height:42px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
+    background:var(--bg); color:var(--navy-900); border:1px solid var(--border);
   }
-  .matloob-marketing-root .why-icon-teal{background:var(--teal-100); color:var(--teal-600);}
-  .matloob-marketing-root .why-icon-blue{background:var(--accent-blue-bg); color:var(--accent-blue-fg);}
-  .matloob-marketing-root .why-icon-purple{background:var(--accent-purple-bg); color:var(--accent-purple-fg);}
-  .matloob-marketing-root .why-icon-orange{background:var(--accent-orange-bg); color:var(--accent-orange-fg);}
   .matloob-marketing-root .why-row-text h3{font-size:13.5px; font-weight:800; color:var(--navy-950); margin-bottom:3px;}
   .matloob-marketing-root .why-row-text p{font-size:11.5px; color:var(--text-500); line-height:1.5;}
 
@@ -611,9 +609,9 @@
 
     /* ---- How/Why panel: stacked single column ---- */
     .matloob-marketing-root section.why-how{padding:0 0 20px;}
-    .matloob-marketing-root .why-how-panel{border-radius:20px; padding:22px 16px;}
-    .matloob-marketing-root .why-how-grid{grid-template-columns:1fr; gap:30px;}
-    .matloob-marketing-root .how-col h2, .matloob-marketing-root .why-col h2{font-size:17px; margin-bottom:18px;}
+    .matloob-marketing-root .how-card, .matloob-marketing-root .why-card{border-radius:18px; padding:20px 18px;}
+    .matloob-marketing-root .why-how-grid{grid-template-columns:1fr; gap:16px;}
+    .matloob-marketing-root .how-card h2, .matloob-marketing-root .why-card h2{font-size:16px; margin-bottom:16px;}
     .matloob-marketing-root .how-row{flex-direction:column; gap:14px;}
     .matloob-marketing-root .how-step-v2{flex-direction:row; width:100%; text-align:right; gap:12px; align-items:center;}
     .matloob-marketing-root .how-step-icon-wrap{margin-bottom:0; flex-shrink:0; width:52px; height:52px;}
