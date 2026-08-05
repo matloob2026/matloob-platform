@@ -386,7 +386,7 @@
   .matloob-marketing-root .req-offers{font-size:10.5px; font-weight:700; color:var(--navy-900); background:var(--teal-100); padding:4px 10px; border-radius:999px;}
 
   /* ===================== HOW IT WORKS + WHY MATLOOB ===================== */
-  .matloob-marketing-root section.why-how{padding:8px 0 56px; position:relative; z-index:1;}
+  .matloob-marketing-root section.why-how{padding:0 0 28px; position:relative; z-index:1;}
   .matloob-marketing-root .why-how-panel{
     background:linear-gradient(180deg, #FDF9F0 0%, #FBF4E4 100%);
     border:1px solid #F1E6CC; border-radius:32px; padding:40px 44px;
@@ -420,7 +420,7 @@
   .matloob-marketing-root .how-step-v2 p{font-size:11px; color:var(--text-500); line-height:1.55;}
   .matloob-marketing-root .how-connector{
     flex:1 1 auto; min-width:16px; height:0; margin-top:34px;
-    border-top:2px dashed var(--border-strong);
+    border-top:2px dashed rgba(10,30,70,.22);
   }
 
   /* ---- Why column ---- */
@@ -438,10 +438,10 @@
   .matloob-marketing-root .why-row-text p{font-size:12px; color:var(--text-500); line-height:1.6;}
 
   /* ===================== CTA ===================== */
-  .matloob-marketing-root section.cta{padding:0 0 61px; position:relative; z-index:1;}
+  .matloob-marketing-root section.cta{padding:0 0 32px; position:relative; z-index:1;}
   .matloob-marketing-root .cta-box{
-    background:var(--grad-cta); border-radius:32px; padding:44px 56px;
-    display:flex; align-items:center; justify-content:space-between; gap:40px; color:#fff;
+    background:var(--grad-cta); border-radius:28px; padding:34px 48px;
+    display:flex; align-items:center; justify-content:space-between; gap:36px; color:#fff;
     box-shadow:var(--shadow-teal-glow); position:relative; overflow:hidden;
   }
   .matloob-marketing-root .cta-box::after{content:''; position:absolute; width:340px; height:340px; border-radius:50%; background:rgba(255,255,255,.06); top:-160px; left:-80px;}
@@ -460,11 +460,11 @@
   }
 
   /* ---- CTA illustration: phone mockup + floating icon chips ---- */
-  .matloob-marketing-root .cta-illustration{position:relative; z-index:2; width:220px; height:230px; flex-shrink:0;}
+  .matloob-marketing-root .cta-illustration{position:relative; z-index:2; width:190px; height:200px; flex-shrink:0;}
   .matloob-marketing-root .cta-phone{
-    position:absolute; top:10px; left:50%; transform:translateX(-50%);
-    width:120px; height:220px; background:#0B1B33; border-radius:24px; border:4px solid rgba(255,255,255,.18);
-    box-shadow:0 24px 50px -12px rgba(0,0,0,.5); padding:16px 12px;
+    position:absolute; top:6px; left:50%; transform:translateX(-50%);
+    width:104px; height:190px; background:#0B1B33; border-radius:22px; border:4px solid rgba(255,255,255,.18);
+    box-shadow:0 20px 42px -10px rgba(0,0,0,.5); padding:14px 10px;
   }
   .matloob-marketing-root .cta-phone-notch{position:absolute; top:6px; left:50%; transform:translateX(-50%); width:36px; height:5px; border-radius:4px; background:rgba(255,255,255,.25);}
   .matloob-marketing-root .cta-phone-screen{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
@@ -482,7 +482,7 @@
   .matloob-marketing-root .cta-chip.chip-4{bottom:-4px; left:16px; background:#F2703F; transform:rotate(-10deg);}
 
   /* ===================== FOOTER ===================== */
-  .matloob-marketing-root footer.site{background:var(--footer-bg); color:rgba(255,255,255,.7); padding:56px 0 10px; position:relative; z-index:1; border-radius:40px 40px 0 0; overflow:hidden;}
+  .matloob-marketing-root footer.site{background:linear-gradient(160deg, var(--navy-800) 0%, var(--footer-bg) 45%); color:rgba(255,255,255,.7); padding:38px 0 10px; position:relative; z-index:1; border-radius:36px 36px 0 0; overflow:hidden;}
   .matloob-marketing-root footer.site::before{content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--grad-primary);}
   .matloob-marketing-root .footer-top{display:grid; grid-template-columns:1.3fr 1fr 1fr 1fr; gap:32px; padding-bottom:26px; border-bottom:1px solid rgba(255,255,255,.14);}
   .matloob-marketing-root .footer-brand{max-width:340px;}
