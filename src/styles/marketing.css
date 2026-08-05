@@ -438,68 +438,76 @@
   .matloob-marketing-root section.cta{padding:0 0 28px; position:relative; z-index:1;}
   .matloob-marketing-root .cta-box{
     background:var(--grad-cta);
-    border-radius:28px; padding:34px 48px;
-    display:flex; align-items:center; justify-content:space-between; gap:36px; color:#fff;
-    position:relative; overflow:hidden;
+    border-radius:26px; padding:22px 44px;
+    display:flex; align-items:center; justify-content:space-between; gap:28px; color:#fff;
+    position:relative; overflow:hidden; min-height:150px;
   }
   .matloob-marketing-root .cta-box::before{
     content:''; position:absolute; inset:0; pointer-events:none;
-    background:radial-gradient(circle at 18% 25%, rgba(255,255,255,.08) 0%, transparent 45%);
+    background:radial-gradient(circle at 16% 30%, rgba(255,255,255,.10) 0%, transparent 42%);
   }
-  .matloob-marketing-root .cta-text{position:relative; z-index:2; max-width:460px;}
-  .matloob-marketing-root .cta-box h2{font-family:'Cairo',sans-serif; font-size:25px; font-weight:800; margin-bottom:8px;}
-  .matloob-marketing-root .cta-box p{font-size:13.5px; color:rgba(255,255,255,.82); line-height:1.7; margin-bottom:20px;}
+  .matloob-marketing-root .cta-text{position:relative; z-index:2; max-width:430px;}
+  .matloob-marketing-root .cta-box h2{font-family:'Cairo',sans-serif; font-size:22px; font-weight:800; margin-bottom:6px;}
+  .matloob-marketing-root .cta-box p{font-size:13px; color:rgba(255,255,255,.8); line-height:1.6; margin-bottom:16px;}
   .matloob-marketing-root .cta-mobile-only{display:none;}
   .matloob-marketing-root .cta-primary-btn{
     display:inline-flex; align-items:center; gap:12px; background:#fff; color:var(--navy-950);
-    padding:12px 10px 12px 24px; border-radius:999px; font-weight:800; font-size:14.5px;
-    box-shadow:0 12px 26px -8px rgba(0,0,0,.35);
+    padding:11px 22px 11px 11px; border-radius:999px; font-weight:800; font-size:14.5px;
+    box-shadow:0 14px 28px -10px rgba(0,0,0,.5);
   }
   .matloob-marketing-root .cta-primary-btn:hover{background:var(--teal-100); transform:translateY(-2px);}
   .matloob-marketing-root .cta-btn-plus{
-    width:28px; height:28px; border-radius:50%; background:var(--teal-600); color:#fff;
-    display:flex; align-items:center; justify-content:center; font-size:16px; font-weight:700; flex-shrink:0;
+    width:30px; height:30px; border-radius:50%; background:var(--grad-cta); color:#fff;
+    line-height:30px; text-align:center; font-size:17px; font-weight:700; flex-shrink:0;
   }
 
-  /* ---- CTA illustration: phone mockup + M logo + floating icon chips ---- */
-  .matloob-marketing-root .cta-illustration{position:relative; z-index:2; width:210px; height:190px; flex-shrink:0;}
-  .matloob-marketing-root .cta-shadow{
-    position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
-    width:118px; height:24px; border-radius:50%;
-    background:radial-gradient(ellipse at center, rgba(0,0,0,.32) 0%, rgba(0,0,0,0) 74%);
+  /* ---- CTA illustration: standing phone + glow + pedestal + floating icon chips ---- */
+  .matloob-marketing-root .cta-illustration{position:relative; z-index:2; width:180px; height:150px; flex-shrink:0;}
+  .matloob-marketing-root .cta-glow{
+    position:absolute; top:8px; left:50%; transform:translateX(-50%);
+    width:120px; height:120px; border-radius:50%;
+    background:radial-gradient(circle, rgba(127,196,206,.5) 0%, rgba(127,196,206,0) 70%);
+  }
+  .matloob-marketing-root .cta-pedestal{
+    position:absolute; bottom:6px; left:50%; transform:translateX(-50%);
+    width:96px; height:20px; border-radius:50%;
+    background:linear-gradient(180deg, rgba(184,227,232,.55) 0%, rgba(184,227,232,.05) 100%);
+    box-shadow:0 6px 14px -2px rgba(0,0,0,.35);
   }
   .matloob-marketing-root .cta-phone{
-    position:absolute; top:0; left:50%; transform:translateX(-50%) rotate(-6deg);
-    width:104px; height:178px; background:#fff; border-radius:22px;
-    box-shadow:0 24px 40px -12px rgba(0,0,0,.45); padding:10px;
+    position:absolute; bottom:16px; left:50%; transform:translateX(-50%) rotate(-4deg);
+    width:82px; height:140px; background:#fff; border-radius:18px;
+    box-shadow:0 20px 34px -10px rgba(0,0,0,.5); padding:8px;
   }
-  .matloob-marketing-root .cta-phone-notch{position:absolute; top:8px; left:50%; transform:translateX(-50%); width:32px; height:5px; border-radius:4px; background:rgba(10,30,70,.14);}
+  .matloob-marketing-root .cta-phone-notch{position:absolute; top:6px; left:50%; transform:translateX(-50%); width:26px; height:4px; border-radius:4px; background:rgba(10,30,70,.14);}
   .matloob-marketing-root .cta-phone-screen{
-    width:100%; height:100%; border-radius:15px; margin-top:2px;
+    width:100%; height:100%; border-radius:12px; margin-top:2px;
     background:linear-gradient(160deg, var(--teal-100) 0%, #fff 70%);
-    display:flex; align-items:center; justify-content:center;
+    line-height:124px; text-align:center;
   }
   .matloob-marketing-root .cta-phone-logo{
-    width:56px; height:56px; border-radius:50%;
-    background:var(--grad-cta);
-    display:flex; align-items:center; justify-content:center;
-    color:#fff; font-family:'Cairo',sans-serif; font-weight:800; font-size:26px;
-    box-shadow:0 12px 20px -6px rgba(10,60,80,.4);
+    display:inline-block; vertical-align:middle;
+    width:42px; height:42px; border-radius:50%;
+    background:var(--grad-cta); line-height:42px; text-align:center;
+    color:#fff; font-family:'Cairo',sans-serif; font-weight:800; font-size:19px;
+    box-shadow:0 10px 16px -5px rgba(10,60,80,.4);
   }
   .matloob-marketing-root .cta-chip{
-    position:absolute; width:40px; height:40px; border-radius:13px;
-    line-height:40px; text-align:center;
-    color:#fff; font-weight:800; font-size:16px; font-family:'Cairo',sans-serif;
-    box-shadow:0 12px 24px -8px rgba(0,0,0,.4);
+    position:absolute; width:34px; height:34px; border-radius:11px;
+    line-height:34px; text-align:center;
+    color:#fff; font-weight:800; font-size:14px; font-family:'Cairo',sans-serif;
+    box-shadow:0 10px 18px -6px rgba(0,0,0,.45);
   }
-  .matloob-marketing-root .cta-chip.chip-1{top:8px; right:2px; background:#F2578B; transform:rotate(-8deg);}
-  .matloob-marketing-root .cta-chip.chip-2{top:64px; left:-6px; background:var(--teal-500); transform:rotate(6deg);}
-  .matloob-marketing-root .cta-chip.chip-3{bottom:26px; right:-4px; background:var(--accent-orange-fg); transform:rotate(-10deg);}
+  .matloob-marketing-root .cta-chip svg{position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);}
+  .matloob-marketing-root .cta-chip.chip-1{top:2px; right:14px; width:38px; height:38px; background:linear-gradient(135deg,#FF9A62,var(--accent-orange-fg)); transform:rotate(-10deg);}
+  .matloob-marketing-root .cta-chip.chip-2{top:22px; right:-4px; background:linear-gradient(135deg,var(--teal-400),var(--teal-600)); transform:rotate(8deg);}
+  .matloob-marketing-root .cta-chip.chip-3{top:58px; right:-10px; width:30px; height:30px; line-height:30px; font-size:14px; background:linear-gradient(135deg,var(--teal-300),var(--teal-500)); transform:rotate(-6deg);}
+  .matloob-marketing-root .cta-chip.chip-4{bottom:14px; right:-2px; background:linear-gradient(135deg,#F2578B,#E23F6B); transform:rotate(10deg);}
+  .matloob-marketing-root .cta-chip.chip-5{bottom:2px; left:6px; background:linear-gradient(135deg,var(--teal-500),var(--teal-700)); transform:rotate(-8deg);}
   .matloob-marketing-root .cta-dot{position:absolute; border-radius:50%; background:rgba(255,255,255,.55);}
-  .matloob-marketing-root .cta-dot.dot-1{width:8px; height:8px; top:16px; left:40px;}
-  .matloob-marketing-root .cta-dot.dot-2{width:5px; height:5px; top:42px; right:48px;}
-  .matloob-marketing-root .cta-dot.dot-3{width:6px; height:6px; bottom:48px; left:8px;}
-  .matloob-marketing-root .cta-dot.dot-4{width:4px; height:4px; bottom:16px; right:64px;}
+  .matloob-marketing-root .cta-dot.dot-1{width:6px; height:6px; top:6px; left:26px;}
+  .matloob-marketing-root .cta-dot.dot-2{width:4px; height:4px; top:40px; left:8px;}
+  .matloob-marketing-root .cta-dot.dot-3{width:5px; height:5px; bottom:40px; right:36px;}
 
   /* ===================== FOOTER ===================== */
   .matloob-marketing-root footer.site{background:var(--footer-bg); color:rgba(255,255,255,.72); padding:36px 0 8px; position:relative; z-index:1; border-radius:32px 32px 0 0;}
