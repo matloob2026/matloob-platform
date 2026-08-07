@@ -146,6 +146,18 @@ export interface Offer {
   createdAt: string;
 }
 
+/**
+ * Offers module (Stage 1): what the supplier-facing "عروضي"
+ * (/my-offers) dashboard page needs that plain `Offer` doesn't carry —
+ * which request each offer belongs to, and that request's own current
+ * status (e.g. a PENDING offer whose request has since moved to
+ * IN_PROGRESS via a *different* accepted offer means this one no
+ * longer has a live chance, which the UI should be able to reflect).
+ */
+export interface OfferWithRequest extends Offer {
+  request: Pick<RequestSummary, "id" | "title" | "status">;
+}
+
 export interface NotificationItem {
   id: string;
   type: string;

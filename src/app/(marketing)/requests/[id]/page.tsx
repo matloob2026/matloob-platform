@@ -3,10 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@/auth/auth";
 import { requestService } from "@/services/request.service";
+import { offerService } from "@/services/offer.service";
 import { Card } from "@/components/ui/Card";
 import { RequestStatusBadge } from "@/components/requests/RequestStatusBadge";
 import { RequestOwnerActions } from "@/components/requests/RequestOwnerActions";
 import { RequestImageManager } from "@/components/media/RequestImageManager";
+import { OffersList } from "@/components/offers/OffersList";
+import { SendOfferForm } from "@/components/offers/SendOfferForm";
+import { MyOfferStatusCard } from "@/components/offers/MyOfferStatusCard";
 import Image from "next/image";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import type { RequestStatus } from "@/types/domain";
@@ -50,6 +54,19 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
 
   const session = await auth();
   const isOwner = session?.user?.id === found.owner.id;
+
+  // Offers module (Stage 1): the owner sees every offer on their
+  // request; a signed-in non-owner sees only their own (if any) — see
+  // OffersList / SendOfferForm / MyOfferStatusCard for the render
+  // branches below. Only fetched when there's actually a viewer who
+  // could see something, to avoid the query for an anonymous visitor.
+  const requestOffers = isOwner
+    ? await offerService.listForRequest(found.id)
+    : [];
+  const myOffer =
+    !isOwner && session?.user?.id
+      ? (await offerService.listForRequest(found.id)).find((o) => o.supplier.id === session.user!.id)
+      : undefined;
 
   // Same visibility rule as GET /api/requests/[id], extended to cover
   // every status that isn't meant to be publicly visible yet (or
@@ -168,6 +185,22 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
         {isOwner && <RequestOwnerActions requestId={found.id} status={found.status} />}
         {isOwner && <RequestImageManager requestId={found.id} initialImages={found.media} />}
       </Card>
+
+      <div className="mx-auto mt-4 max-w-2xl">
+        {isOwner && <OffersList offers={requestOffers} />}
+        {!isOwner && myOffer && <MyOfferStatusCard offer={myOffer} />}
+        {!isOwner && !myOffer && session?.user?.id && found.status === "PUBLISHED" && (
+          <SendOfferForm requestId={found.id} />
+        )}
+        {!isOwner && !session?.user?.id && found.status === "PUBLISHED" && (
+          <Card className="mt-4 text-center text-sm text-text-500">
+            <a href={`/login?callbackUrl=/requests/${found.id}`} className="font-bold text-teal-700 hover:underline">
+              سجّل الدخول
+            </a>{" "}
+            لتقديم عرض على هذا الطلب.
+          </Card>
+        )}
+      </div>
 
       {similarRequests.length > 0 && (
         <div className="mx-auto mt-8 max-w-2xl">

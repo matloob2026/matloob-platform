@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { User, ClipboardList, LogOut, ChevronLeft, ChevronDown } from "lucide-react";
+import { User, ClipboardList, HandCoins, Bell, Bookmark, Settings, LogOut, ChevronLeft, ChevronDown } from "lucide-react";
 
 export function UserMenu({
   name,
@@ -32,6 +32,10 @@ export function UserMenu({
   const menuItems = [
     { href: "/profile", label: "الملف الشخصي", Icon: User },
     { href: "/my-requests", label: "طلباتي", Icon: ClipboardList },
+    { href: "/my-offers", label: "عروضي", Icon: HandCoins },
+    { href: "/saved-requests", label: "المحفوظات", Icon: Bookmark },
+    { href: "/notifications", label: "الإشعارات", Icon: Bell },
+    { href: "/account-settings", label: "إعدادات الحساب", Icon: Settings },
   ];
 
   return (
