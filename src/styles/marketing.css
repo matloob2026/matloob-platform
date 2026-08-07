@@ -292,7 +292,13 @@
   .matloob-marketing-root .ticker-viewport{flex:1 1 auto; min-width:0; overflow:hidden;}
   .matloob-marketing-root .ticker-track{
     display:flex; align-items:center; width:max-content;
-    animation:ticker-scroll 24s linear infinite;
+    /* Duration bumped from 24s -> 30s to match homepage-render.ts's
+       new minimum-8-items-per-half ticker duplication (see the
+       "Root cause" comment there): keeps the per-item dwell time at
+       a comfortable, moderate pace instead of feeling rushed now
+       that the track always has enough repeated content to stay
+       gap-free even with very few real published requests. */
+    animation:ticker-scroll 30s linear infinite;
   }
   /* Latest Requests ticker fix: no hover-pause — a resting cursor
      (or a mobile browser's sticky :hover after a tap) would otherwise
@@ -607,21 +613,19 @@
     .matloob-marketing-root .header-actions .btn-primary{display:none;}
     .matloob-marketing-root .mobile-menu-btn{display:flex;}
 
-    /* ---- Signed-in account menu (portaled <UserMenu> from
-         src/components/layout/UserMenu.tsx — shared sitewide, not
-         rewritten here): on narrow viewports its default absolute
-         320px panel can run past the screen edge and get clipped
-         into an odd "square" shape. Re-anchor it as a proper rounded
-         bottom sheet instead — CSS-only, no component/behavior
-         changes, targets the dropdown purely via its semantic
-         [role="menu"] attribute. ---- */
-    .matloob-marketing-root .header-actions [role="menu"]{
-      position:fixed !important; top:auto !important; bottom:0 !important;
-      left:0 !important; right:0 !important; margin:0 !important;
-      width:100% !important; max-width:100% !important;
-      border-radius:22px 22px 0 0 !important;
-      box-shadow:0 -12px 40px -8px rgba(10,30,70,.35) !important;
-    }
+    /* Signed-in account menu (<UserMenu> from
+       src/components/layout/UserMenu.tsx, shared sitewide): the old
+       rule here tried to re-anchor `[role="menu"]` as a mobile bottom
+       sheet, but that div is UserMenu's *desktop* dropdown, which is
+       already `hidden` below the `sm` breakpoint — so this rule never
+       actually applied and the real "tiny square" bug (the mobile
+       drawer, `role="dialog"`) went untouched. Root cause was
+       `header.site`'s `backdrop-filter`, which creates a new
+       containing block for `position:fixed` descendants, trapping the
+       drawer inside the ~80px-tall header. Real fix now lives in
+       UserMenu.tsx: the mobile drawer/overlay are rendered through a
+       React portal straight to `document.body`, so no CSS override is
+       needed here anymore. ---- */
 
     /* ---- Hero: tablet — illustrations shrink proportionally; the
          ticker pill narrows with the container (already lightweight at

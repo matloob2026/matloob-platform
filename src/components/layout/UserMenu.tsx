@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { User, ClipboardList, HandCoins, MessageCircle, Bell, Bookmark, Settings, LogOut, ChevronLeft, ChevronDown, X } from "lucide-react";
+import { User, ClipboardList, HandCoins, MessageCircle, Bell, Bookmark, Settings, LogOut, ChevronLeft, ChevronDown, Menu, X } from "lucide-react";
 import { apiFetch } from "@/lib/api-client";
 import { NOTIFICATION_READ_EVENT, type NotificationReadEventDetail } from "@/lib/notification-events";
 import type { NotificationItem } from "@/types/domain";
@@ -19,13 +20,32 @@ export function UserMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  // The mobile drawer/overlay are portaled straight to document.body
+  // (see the big comment above the portal call below for why), which
+  // only exists client-side — guard the portal render behind a mount
+  // flag so server-rendered HTML and the first client render match.
+  const [mounted, setMounted] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      const target = e.target as Node;
+      // The desktop trigger/dropdown still live inside containerRef.
+      // The mobile drawer/overlay are portaled to document.body (see
+      // below), so they are NOT DOM descendants of containerRef even
+      // though React treats them as children — without also checking
+      // drawerRef here, every tap inside the mobile drawer (including
+      // on its own menu links) would be misread as an "outside" click
+      // and instantly close the menu before the link's own onClick/
+      // navigation could run.
+      if (containerRef.current?.contains(target)) return;
+      if (drawerRef.current?.contains(target)) return;
+      setOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -109,6 +129,22 @@ export function UserMenu({
     </span>
   );
 
+  // Small (40px) variant used inside trigger buttons/rows, as opposed
+  // to the larger 48px `avatar` used inside the dropdown/drawer header.
+  const smallAvatar = imageUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element -- small fixed-size avatar; next/image's overhead isn't warranted here
+    <img
+      src={imageUrl}
+      alt={name}
+      className="h-10 w-10 rounded-full object-cover ring-2 ring-white"
+      referrerPolicy="no-referrer"
+    />
+  ) : (
+    <span className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-950 text-sm font-bold text-white ring-2 ring-white">
+      {initial}
+    </span>
+  );
+
   // Shared between the desktop dropdown and the mobile drawer — same
   // rows, same order, same badge — so the two surfaces never drift
   // out of sync with each other.
@@ -137,43 +173,123 @@ export function UserMenu({
     signOut({ callbackUrl: "/" });
   }
 
+  // Mobile drawer + overlay, portaled straight to document.body.
+  //
+  // Root cause of the "small/incorrect square" bug: UserMenu can be
+  // mounted deep inside other markup (e.g. the homepage portals it
+  // into `.header-actions`, inside `header.site`). `header.site` sets
+  // `backdrop-filter: blur(...)`, and per the CSS spec `filter` /
+  // `backdrop-filter` (like `transform`) creates a new containing
+  // block for `position: fixed` descendants — so a `fixed inset-y-0
+  // right-0` drawer nested under it was being positioned relative to
+  // the ~80px header instead of the real viewport, rendering as a
+  // tiny clipped box. Portaling to `document.body` guarantees the
+  // drawer/overlay are never nested inside anything that could become
+  // a containing block, regardless of where the trigger lives — this
+  // fixes the homepage AND keeps working identically on every
+  // internal page using SiteHeader, satisfying "one shared
+  // implementation, everywhere" without any per-page special-casing.
+  const mobileDrawer = (
+    <div ref={drawerRef}>
+      <div
+        className={`fixed inset-0 z-[200] bg-black/50 backdrop-blur-[1px] transition-opacity duration-300 sm:hidden ${
+          open ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
+      <div
+        className={`fixed inset-y-0 right-0 z-[210] flex w-[50%] max-w-sm flex-col overflow-hidden rounded-l-[24px] bg-white shadow-[0_0_40px_rgba(15,42,74,0.35)] transition-transform duration-300 ease-out sm:hidden ${
+          open ? "translate-x-0" : "translate-x-full"
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="قائمة الحساب"
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-4">
+          <p className="font-display text-sm font-extrabold text-navy-950">حسابي</p>
+          <button
+            type="button"
+            onClick={() => setOpen(false)}
+            aria-label="إغلاق"
+            className="rounded-full p-2 text-text-500 transition-colors hover:bg-surface-muted"
+          >
+            <X size={20} strokeWidth={2.2} />
+          </button>
+        </div>
+
+        <div className="flex flex-col items-center gap-2 border-b border-border px-4 py-5">
+          {avatar}
+          <div className="max-w-full text-center">
+            <p className="truncate text-sm font-extrabold text-navy-950">{name}</p>
+            {email && <p className="mt-0.5 truncate text-[11px] text-text-400">{email}</p>}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-2 py-2">{renderMenuLinks()}</div>
+
+        <div className="border-t border-border px-2 py-2">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleLogout}
+            className="flex w-full cursor-pointer items-center gap-3.5 rounded-xl px-4 py-3.5 text-right text-sm font-semibold text-red-600 transition-colors duration-150 hover:bg-red-50"
+          >
+            <LogOut size={19} strokeWidth={1.8} />
+            تسجيل الخروج
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div dir="rtl" className="relative" ref={containerRef}>
+      {/* Desktop trigger (sm and up) — avatar opens the existing
+          dropdown, unchanged behavior/appearance from before. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="relative flex items-center rounded-full border border-border bg-white p-1 shadow-sm transition-all hover:shadow-md"
+        className="relative hidden items-center rounded-full border border-border bg-white p-1 shadow-sm transition-all hover:shadow-md sm:flex"
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={name}
       >
-        {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- small fixed-size avatar in a dropdown trigger; next/image's overhead isn't warranted here
-          <img
-            src={imageUrl}
-            alt={name}
-            className="h-10 w-10 rounded-full object-cover ring-2 ring-white"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-navy-950 text-sm font-bold text-white ring-2 ring-white">
-            {initial}
-          </span>
-        )}
-        {!!unreadCount && (
-          <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-600 sm:hidden" />
-        )}
+        {smallAvatar}
         <ChevronDown
           size={15}
           strokeWidth={2.4}
-          className={`mx-1 hidden text-text-400 transition-transform duration-200 sm:inline-block ${open ? "rotate-180" : ""}`}
+          className={`mx-1 inline-block text-text-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         />
       </button>
 
+      {/* Mobile trigger row (below sm) — the four-line hamburger icon
+          is the ONLY tap target that opens the menu; the avatar next
+          to it is decorative/identity-only (no onClick, not a
+          button), per the explicit "avatar must not be the primary
+          nav trigger" requirement. */}
+      <div className="flex items-center gap-2 sm:hidden">
+        <span aria-hidden="true">{smallAvatar}</span>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-white text-navy-950 shadow-sm transition-all hover:shadow-md"
+          aria-haspopup="true"
+          aria-expanded={open}
+          aria-label="فتح قائمة الحساب"
+        >
+          <Menu size={20} strokeWidth={2.2} />
+          {!!unreadCount && (
+            <span className="absolute -left-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-white bg-red-600" />
+          )}
+        </button>
+      </div>
+
       {/* Desktop dropdown (sm and up) — 320px, 20px rounding, soft deep
-          shadow, 200ms fade+slide. Unchanged from before, just now
-          explicitly scoped to sm:+ since mobile gets its own drawer
-          below. */}
+          shadow, 200ms fade+slide. Unchanged from before. Stays a
+          normal (non-portaled) absolute-positioned child of this
+          container, since it's meant to hang directly below the
+          avatar trigger, not cover the viewport. */}
       <div
         className={`absolute left-0 z-50 mt-3 hidden w-80 origin-top-left overflow-hidden rounded-[20px] border border-border bg-white shadow-[0_20px_60px_-15px_rgba(15,42,74,0.35)] transition-all duration-200 ease-out sm:block ${
           open
@@ -220,63 +336,7 @@ export function UserMenu({
         </div>
       </div>
 
-      {/* Mobile profile drawer (below sm) — a real slide-in panel,
-          not a scaled-down dropdown: opens from the right, ~78% of
-          the viewport width, rounded left corners, dark overlay
-          behind it, closes on outside click or the × button. Always
-          rendered (never conditionally unmounted) so the slide-out
-          animation plays on close too, same technique the desktop
-          dropdown above already uses for its own open/close
-          transition, just translate-x instead of translate-y/scale. */}
-      <div
-        className={`fixed inset-0 z-[60] bg-black/50 backdrop-blur-[1px] transition-opacity duration-300 sm:hidden ${
-          open ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-        onClick={() => setOpen(false)}
-        aria-hidden="true"
-      />
-      <div
-        className={`fixed inset-y-0 right-0 z-[70] flex w-[78%] max-w-xs flex-col overflow-hidden rounded-l-[24px] bg-white shadow-[0_0_40px_rgba(15,42,74,0.35)] transition-transform duration-300 ease-out sm:hidden ${
-          open ? "translate-x-0" : "translate-x-full"
-        }`}
-        role="dialog"
-        aria-modal="true"
-        aria-label="قائمة الحساب"
-      >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <p className="font-display text-base font-extrabold text-navy-950">حسابي</p>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="إغلاق"
-            className="rounded-full p-2 text-text-500 transition-colors hover:bg-surface-muted"
-          >
-            <X size={20} strokeWidth={2.2} />
-          </button>
-        </div>
-
-        <div className="flex flex-col items-center gap-3 border-b border-border px-6 py-6">
-          {avatar}
-          <div className="text-center">
-            <p className="truncate text-base font-extrabold text-navy-950">{name}</p>
-            {email && <p className="mt-0.5 truncate text-xs text-text-400">{email}</p>}
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto px-3 py-3">{renderMenuLinks()}</div>
-
-        <div className="border-t border-border px-3 py-3">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleLogout}
-            className="flex w-full cursor-pointer items-center gap-3.5 rounded-xl px-4 py-3.5 text-right text-sm font-semibold text-red-600 transition-colors duration-150 hover:bg-red-50"
-          >
-            <LogOut size={19} strokeWidth={1.8} />
-            تسجيل الخروج
-          </button>
-        </div>
-      </div>
+      {mounted ? createPortal(mobileDrawer, document.body) : null}
     </div>
   );
 }

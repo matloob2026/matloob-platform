@@ -351,10 +351,32 @@ export function renderHomepageHtml(
     // Requests ticker — reuses this SAME already-fetched list (every
     // published request, featured ones first, never gated on
     // isFeatured — see request.service.ts's listAllPublished) rather
-    // than a second query. Duplicated once so the CSS marquee
-    // (`.ticker-track`, translateX(-50%)) loops seamlessly: once the
-    // first copy has fully scrolled past, the second copy is exactly
-    // where the first one started.
+    // than a second query.
+    //
+    // Root cause of the "shows one item then goes blank" bug: the CSS
+    // marquee (`.ticker-track{width:max-content}`, `translateX(-50%)`)
+    // is only visually gap-free while the rendered track is WIDER than
+    // the visible `.ticker-viewport`. The old code always duplicated
+    // the item list exactly once (×2 total), which is fine when there
+    // are many published requests, but with only a handful of real
+    // requests (common on a fresh/low-traffic marketplace) the
+    // doubled track can be narrower than the viewport — once the short
+    // track scrolls past, there is genuinely nothing left to show
+    // until the animation loops back to translateX(0), which reads to
+    // a viewer as "one request, then it disappears, comes back after
+    // a refresh" even though nothing ever crashed or froze.
+    //
+    // Fix: repeat the (identical) item set enough times that each
+    // half of the track comfortably exceeds any realistic viewport
+    // width, regardless of how few real requests exist, while keeping
+    // the two halves byte-for-byte identical so translateX(-50%)
+    // still loops perfectly seamlessly. When there are already enough
+    // real items this is a no-op (repeat stays 1, output unchanged).
+    const MIN_TICKER_ITEMS_PER_HALF = 8;
+    const realTickerItemCount = content.featuredRequests.length;
+    const tickerRepeat =
+      realTickerItemCount > 0 ? Math.max(1, Math.ceil(MIN_TICKER_ITEMS_PER_HALF / realTickerItemCount)) : 0;
+
     const tickerItemHtml = content.featuredRequests
       .map((req) => {
         const relativeTime = req.publishedAt ? formatArabicRelativeTime(new Date(req.publishedAt)) : "";
@@ -368,10 +390,11 @@ export function renderHomepageHtml(
         );
       })
       .join("");
-    if (tickerItemHtml) {
+    if (tickerItemHtml && tickerRepeat > 0) {
+      const tickerHalfHtml = tickerItemHtml.repeat(tickerRepeat);
       html = html.replace(
         /<!--CMS:REQUESTS_TICKER_START-->[\s\S]*?<!--CMS:REQUESTS_TICKER_END-->/,
-        `<!--CMS:REQUESTS_TICKER_START-->${tickerItemHtml}${tickerItemHtml}<!--CMS:REQUESTS_TICKER_END-->`
+        `<!--CMS:REQUESTS_TICKER_START-->${tickerHalfHtml}${tickerHalfHtml}<!--CMS:REQUESTS_TICKER_END-->`
       );
     }
   }
