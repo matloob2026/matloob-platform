@@ -28,6 +28,7 @@
     </div>
   </div>
 
+  <div class="mobile-nav-overlay" id="mobileNavOverlay" onclick="toggleMobileMenu()"></div>
   <div class="mobile-nav" id="mobileNav">
     <div class="wrap">
       <nav>
@@ -170,9 +171,9 @@
 <!-- ===================== CATEGORIES ===================== -->
 <section class="categories">
   <div class="wrap">
-    <div class="section-head reveal">
-      <div><span class="section-eyebrow">استكشف</span><h2>تصفح التصنيفات</h2></div>
-      <!--CMS:CATEGORIES_SEE_ALL_START--><a href="#" class="see-all">عرض جميع التصنيفات ←</a><!--CMS:CATEGORIES_SEE_ALL_END-->
+    <div class="section-head">
+      <div><span class="section-eyebrow">استكشف</span><h2>تصفح حسب التصنيف</h2></div>
+      <!--CMS:CATEGORIES_SEE_ALL_START--><a href="#" class="see-all">عرض الكل ←</a><!--CMS:CATEGORIES_SEE_ALL_END-->
     </div>
     <div class="cat-grid">
       <!--CMS:CATEGORIES_GRID_START-->
@@ -214,7 +215,7 @@
 <!-- ===================== LATEST REQUESTS ===================== -->
 <section class="requests">
   <div class="wrap">
-    <div class="section-head reveal">
+    <div class="section-head">
       <div><span class="section-eyebrow">تحديث لحظي</span><h2>أحدث الطلبات</h2></div>
       <!--CMS:REQUESTS_SEE_ALL_START--><a href="#" class="see-all">عرض الكل ←</a><!--CMS:REQUESTS_SEE_ALL_END-->
     </div>
@@ -602,7 +603,7 @@
       <div class="footer-grid">
         <div>
           <h4>روابط مهمة</h4>
-          <ul>
+          <ul class="footer-links-2col">
             <li><a href="#">من نحن</a></li>
             <li><a href="#">تواصل معنا</a></li>
             <li><a href="/blog">المدونة</a></li>
