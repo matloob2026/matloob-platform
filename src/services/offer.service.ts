@@ -28,7 +28,7 @@ import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
 import { requestService } from "@/services/request.service";
 import { notificationService } from "@/services/notification.service";
-import type { Offer, OfferStatus, OfferWithRequest, Paginated } from "@/types/domain";
+import type { Offer, OfferStatus, OfferWithRequest, Paginated, RequestStatus } from "@/types/domain";
 
 // ---------------------------------------------------------------------
 // Errors — typed so API routes can map each one to the right HTTP
@@ -133,7 +133,7 @@ type OfferRow = Awaited<ReturnType<typeof findOfferRow>>;
  * is derived from `findOfferRow` — keeps this file's typing style
  * consistent even though the specific inference path differs. */
 type MyOfferRow = NonNullable<OfferRow> & {
-  request: { id: string; title: string; status: Offer["status"] };
+  request: { id: string; title: string; status: RequestStatus };
 };
 
 async function findOfferRow(id: string) {
