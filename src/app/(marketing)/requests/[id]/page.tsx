@@ -14,6 +14,7 @@ import { MyOfferStatusCard } from "@/components/offers/MyOfferStatusCard";
 import Image from "next/image";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import type { RequestStatus } from "@/types/domain";
+import { isBuyerContactVisible } from "@/lib/buyer-contact-visibility";
 
 /** Statuses visible to anyone other than the request's own owner —
  * everything a published request can still become later in its
@@ -146,7 +147,8 @@ export default async function RequestDetailsPage({ params }: { params: Promise<{
           </div>
         </dl>
 
-        {(found.contact.phoneVisible || found.contact.whatsappVisible || found.contact.emailVisible) && (
+        {(found.contact.phoneVisible || found.contact.whatsappVisible || found.contact.emailVisible) &&
+          isBuyerContactVisible(found, session?.user?.id) && (
           <div className="mt-4 rounded-lg border border-teal-200 bg-teal-50 p-4 text-sm">
             <p className="mb-2 font-bold text-navy-950">معلومات التواصل</p>
             <div className="space-y-1.5">

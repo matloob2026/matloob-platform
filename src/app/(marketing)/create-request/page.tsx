@@ -7,7 +7,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
   title: "أنشئ طلبك | مطلوب",
-  description: "انشر ما تحتاجه وخلي الموردين يوصلولك بعروضهم.",
+  description: "انشر ما تحتاجه وخلي مقدمي الخدمة يوصلولك بعروضهم.",
 };
 
 export default async function CreateRequestPage({
@@ -40,7 +40,7 @@ export default async function CreateRequestPage({
           بدل ما تدور... اطلبها
         </h1>
         <p className="mt-2 text-sm text-text-500">
-          اكتب تفاصيل ما تحتاجه، وخلي الموردين المناسبين يوصلولك بعروضهم.
+          اكتب تفاصيل ما تحتاجه، وخلي مقدمي الخدمة المناسبين يوصلولك بعروضهم.
         </p>
       </div>
       <RequestForm

@@ -30,8 +30,8 @@ const PAGE_SIZE = 8;
 
 const ROLE_LABEL: Record<UserRoleValue, string> = {
   BUYER: "مشتري",
-  SUPPLIER: "مورد",
-  BOTH: "مشتري ومورد",
+  SUPPLIER: "مقدم خدمة",
+  BOTH: "مشتري ومقدم خدمة",
   ADMIN: "مدير",
   MODERATOR: "مشرف",
 };

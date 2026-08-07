@@ -12,7 +12,7 @@ import clsx from "clsx";
 const MOCK_NOTIFICATIONS = [
   { id: "1", title: "طلب جديد بحاجة لمراجعة", time: "منذ 5 دقائق", isRead: false },
   { id: "2", title: "بلاغ جديد على طلب", time: "منذ ساعة", isRead: false },
-  { id: "3", title: "مورد جديد ينتظر التوثيق", time: "منذ 3 ساعات", isRead: true },
+  { id: "3", title: "مقدم خدمة جديد ينتظر التوثيق", time: "منذ 3 ساعات", isRead: true },
 ];
 
 export function NotificationBell() {

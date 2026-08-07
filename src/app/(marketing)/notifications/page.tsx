@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth/auth";
 import { notificationService } from "@/services/notification.service";
 import { Card } from "@/components/ui/Card";
 import { SiteHeader } from "@/components/layout/SiteHeader";
-import { MarkNotificationReadButton } from "@/components/notifications/MarkNotificationReadButton";
+import { NotificationRow } from "@/components/notifications/NotificationRow";
 
 export const metadata: Metadata = {
   title: "الإشعارات | مطلوب",
@@ -44,24 +43,7 @@ export default async function NotificationsPage() {
         ) : (
           <div className="space-y-3">
             {items.map((n) => (
-              <Card key={n.id} className={n.isRead ? "opacity-70" : undefined}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    {n.linkUrl ? (
-                      <Link href={n.linkUrl} className="font-bold text-navy-950 hover:text-teal-700">
-                        {n.title}
-                      </Link>
-                    ) : (
-                      <p className="font-bold text-navy-950">{n.title}</p>
-                    )}
-                    <p className="mt-1 text-sm text-text-700">{n.body}</p>
-                    <p className="mt-1.5 text-xs text-text-400">
-                      {new Date(n.createdAt).toLocaleDateString("ar-SA")}
-                    </p>
-                  </div>
-                  {!n.isRead && <MarkNotificationReadButton notificationId={n.id} />}
-                </div>
-              </Card>
+              <NotificationRow key={n.id} notification={n} />
             ))}
           </div>
         )}

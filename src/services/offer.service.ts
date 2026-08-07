@@ -226,6 +226,18 @@ function mapToOffer(row: NonNullable<OfferRow>): Offer {
     price: row.price ? Number(row.price) : undefined,
     status: row.status,
     createdAt: row.createdAt.toISOString(),
+    // UX pass (contact info inside offers, item 4/5): always populated
+    // for now — see src/lib/offer-contact-visibility.ts for the single
+    // point of truth that will later gate this, per item 6.
+    contact: {
+      phone: row.supplier.profile?.contactPhone ?? undefined,
+      // Same number as `phone` — the schema has no separate WhatsApp
+      // column yet (UserProfile only has `contactPhone`). Deriving
+      // both from one field rather than adding a new column, per this
+      // phase's "only UX/functionality improvements" scope.
+      whatsapp: row.supplier.profile?.contactPhone ?? undefined,
+      email: row.supplier.email ?? undefined,
+    },
   };
 }
 
@@ -294,7 +306,7 @@ export class PrismaOfferService implements OfferService {
           userId: request.ownerId,
           type: "NEW_OFFER",
           title: "عرض جديد على طلبك",
-          body: "تلقى طلبك عرضًا جديدًا من أحد الموردين.",
+          body: "تلقى طلبك عرضًا جديدًا من أحد مقدمي الخدمة.",
           linkUrl: `/requests/${input.requestId}`,
           metadata: { requestId: input.requestId, offerId: row.id },
         },

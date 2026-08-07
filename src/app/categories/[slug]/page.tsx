@@ -125,7 +125,7 @@ export default async function CategoryDetailPage({ params }: { params: Promise<{
                 محتاج {category.name}؟ اطلبها الآن
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-teal-100 sm:text-base">
-                انشر طلبك مجاناً في هذا التصنيف وخلي الموردين المناسبين يوصلولك بعروضهم.
+                انشر طلبك مجاناً في هذا التصنيف وخلي مقدمي الخدمة المناسبين يوصلولك بعروضهم.
               </p>
               <Link
                 href={createRequestHref}

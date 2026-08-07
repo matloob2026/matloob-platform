@@ -14,7 +14,7 @@ import Link from "next/link";
  */
 export function PublicPageCta({
   heading = "عندك طلب؟ مطلوب يوصلك بأفضل العروض",
-  body = "انشر طلبك الآن مجاناً وخلي الموردين يوصلولك بعروضهم.",
+  body = "انشر طلبك الآن مجاناً وخلي مقدمي الخدمة يوصلولك بعروضهم.",
   buttonLabel = "أضف طلبك الآن",
 }: {
   heading?: string;

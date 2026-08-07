@@ -267,7 +267,7 @@ const NOTIFY_ON_STATUS: Partial<Record<AdminRequestStatus, { type: "REQUEST_APPR
   PUBLISHED: {
     type: "REQUEST_APPROVED",
     title: "تم نشر طلبك",
-    body: "تمت الموافقة على طلبك وهو الآن منشور ومرئي للموردين.",
+    body: "تمت الموافقة على طلبك وهو الآن منشور ومرئي لمقدمي الخدمة.",
   },
   REJECTED: {
     type: "REQUEST_REJECTED",
@@ -459,7 +459,7 @@ export class RequestAdminService {
         }) => ({
           id: o.id,
           supplierId: o.supplierId,
-          supplierName: o.supplier.profile?.displayName ?? "مورد",
+          supplierName: o.supplier.profile?.displayName ?? "مقدم خدمة",
           price: o.price ? Number(o.price.toString()) : null,
           status: o.status,
           createdAt: o.createdAt,

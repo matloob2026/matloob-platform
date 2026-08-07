@@ -26,7 +26,7 @@ export function OfferAcceptRejectButtons({ offer }: { offer: Offer }) {
   async function handleAccept() {
     const confirmed = await confirm({
       title: "قبول العرض",
-      message: `هل تريد قبول عرض ${offer.supplier.displayName}؟ سيتم إغلاق الطلب أمام العروض الأخرى وفتح محادثة مع المورد.`,
+      message: `هل تريد قبول عرض ${offer.supplier.displayName}؟ سيتم إغلاق الطلب أمام العروض الأخرى وفتح محادثة مع مقدم الخدمة.`,
       confirmLabel: "قبول العرض",
     });
     if (!confirmed) return;

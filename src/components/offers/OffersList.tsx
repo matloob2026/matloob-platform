@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Card } from "@/components/ui/Card";
 import { OfferStatusBadge } from "./OfferStatusBadge";
 import { OfferAcceptRejectButtons } from "./OfferAcceptRejectButtons";
+import { OfferContactLinks } from "./OfferContactLinks";
 import type { Offer } from "@/types/domain";
 
 /**
@@ -65,6 +66,8 @@ export function OffersList({ offers }: { offers: Offer[] }) {
               </p>
             </div>
           </Link>
+
+          <OfferContactLinks contact={offer.contact} />
 
           {offer.status === "PENDING" && (
             <OfferAcceptRejectButtons offer={offer} />

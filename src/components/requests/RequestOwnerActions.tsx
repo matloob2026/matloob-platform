@@ -59,7 +59,7 @@ export function RequestOwnerActions({ requestId, status }: { requestId: string; 
   async function handleClose() {
     const confirmed = await confirm({
       title: "إغلاق الطلب",
-      message: "هل تريد إغلاق هذا الطلب؟ لن يتمكن الموردون من تقديم عروض جديدة بعد الإغلاق.",
+      message: "هل تريد إغلاق هذا الطلب؟ لن يتمكن مقدمو الخدمة من تقديم عروض جديدة بعد الإغلاق.",
       confirmLabel: "إغلاق",
     });
     if (!confirmed) return;

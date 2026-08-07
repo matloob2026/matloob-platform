@@ -51,7 +51,7 @@ export default function AdminOffersPage() {
 
   const columns: DataTableColumn<AdminOfferRow>[] = [
     { key: "request", header: "الطلب", render: (o) => o.requestTitle },
-    { key: "supplier", header: "المورد", render: (o) => o.supplier },
+    { key: "supplier", header: "مقدم الخدمة", render: (o) => o.supplier },
     { key: "price", header: "السعر المعروض", render: (o) => o.price ?? "حسب الاتفاق" },
     {
       key: "status",
@@ -67,7 +67,7 @@ export default function AdminOffersPage() {
 
   return (
     <div>
-      <PageHeader title="العروض" description="متابعة العروض المقدمة من الموردين على الطلبات" />
+      <PageHeader title="العروض" description="متابعة العروض المقدمة من مقدمي الخدمة على الطلبات" />
 
       <DataTable
         columns={columns}
@@ -79,7 +79,7 @@ export default function AdminOffersPage() {
           setSearch(v);
           setPage(1);
         }}
-        searchPlaceholder="بحث باسم المورد أو الطلب..."
+        searchPlaceholder="بحث باسم مقدم الخدمة أو الطلب..."
         filters={
           <Select
             value={status}

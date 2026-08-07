@@ -15,7 +15,7 @@ function generateMockOffers(count: number): AdminOfferRow[] {
   return Array.from({ length: count }, (_, i) => ({
     id: `offer-${i + 1}`,
     requestTitle: `مطلوب طلب رقم ${(i % 30) + 1}`,
-    supplier: `مورد ${(i % 25) + 1}`,
+    supplier: `مقدم خدمة ${(i % 25) + 1}`,
     price: i % 4 === 0 ? undefined : `${(i + 1) * 210} ر.س`,
     status: STATUSES[i % STATUSES.length]!,
     createdAt: new Date(Date.now() - i * 21_600_000).toISOString(),

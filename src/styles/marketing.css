@@ -294,7 +294,11 @@
     display:flex; align-items:center; width:max-content;
     animation:ticker-scroll 24s linear infinite;
   }
-  .matloob-marketing-root .ticker-pill:hover .ticker-track{animation-play-state:paused;}
+  /* Latest Requests ticker fix: no hover-pause — a resting cursor
+     (or a mobile browser's sticky :hover after a tap) would otherwise
+     freeze the marquee until the page is refreshed. Keeps scrolling
+     continuously, matching the "no freezing / no refresh required"
+     requirement. */
   @keyframes ticker-scroll{from{transform:translateX(0);} to{transform:translateX(-50%);}}
   .matloob-marketing-root .ticker-item{
     display:inline-flex; align-items:center; gap:7px; white-space:nowrap;

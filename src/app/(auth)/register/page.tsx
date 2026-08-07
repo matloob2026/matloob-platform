@@ -139,7 +139,7 @@ export default function RegisterPage() {
           <FormField label="نوع الحساب">
             <Select value={role} onChange={(e) => setRole(e.target.value as Role)}>
               <option value="BUYER">أبحث عن خدمات (طالب)</option>
-              <option value="SUPPLIER">أقدم خدمات (مورد)</option>
+              <option value="SUPPLIER">أقدم خدمات (مقدم خدمة)</option>
               <option value="BOTH">كلاهما</option>
             </Select>
           </FormField>

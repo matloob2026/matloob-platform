@@ -209,7 +209,7 @@ export function RequestForm({ mode, requestId, options, initialValues }: Request
             ✓
           </span>
           <h2 className="mt-4 font-display text-xl font-extrabold text-navy-950">تم نشر طلبك بنجاح</h2>
-          <p className="mt-2 text-sm text-text-500">سيبدأ الموردون المناسبون بالتواصل معك قريباً.</p>
+          <p className="mt-2 text-sm text-text-500">سيبدأ مقدمو الخدمة المناسبون بالتواصل معك قريباً.</p>
           <div className="mt-6 flex w-full max-w-xs flex-col gap-3">
             <Button size="lg" className="w-full" onClick={handleCreateAnother}>
               إنشاء طلب جديد

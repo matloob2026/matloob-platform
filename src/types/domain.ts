@@ -136,6 +136,22 @@ export interface RequestDetail extends RequestSummary {
   contact: RequestContactInfo;
 }
 
+/**
+ * UX pass (contact info inside offers): the offer's supplier's
+ * contact details, shown directly on the offer card so the buyer can
+ * reach out immediately — no messaging step required. Sourced from
+ * `UserProfile.contactPhone` (also used to derive the WhatsApp link;
+ * the schema has no separate WhatsApp column) and the account's login
+ * email. Every field is optional — the UI only renders whichever ones
+ * are actually present, same "show what's available" behavior the
+ * Request contact block already has.
+ */
+export interface OfferContactInfo {
+  phone?: string;
+  whatsapp?: string;
+  email?: string;
+}
+
 export interface Offer {
   id: string;
   requestId: string;
@@ -144,6 +160,7 @@ export interface Offer {
   price?: number;
   status: OfferStatus;
   createdAt: string;
+  contact: OfferContactInfo;
 }
 
 /**

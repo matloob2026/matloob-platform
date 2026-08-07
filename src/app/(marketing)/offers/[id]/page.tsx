@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/Badge";
 import { OfferStatusBadge } from "@/components/offers/OfferStatusBadge";
 import { OfferAcceptRejectButtons } from "@/components/offers/OfferAcceptRejectButtons";
 import { EditableOfferBody } from "@/components/offers/EditableOfferBody";
+import { OfferContactLinks } from "@/components/offers/OfferContactLinks";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export async function generateMetadata({
@@ -108,6 +109,12 @@ export default async function OfferDetailsPage({ params }: { params: Promise<{ i
           <p className="mt-3 text-xs text-text-400">
             قُدِّم بتاريخ {new Date(offer.createdAt).toLocaleDateString("ar-SA")}
           </p>
+
+          {/* UX pass (items 4/5): the buyer sees the provider's contact
+              info directly here, on both pending and accepted offers —
+              a supplier never sees their own contact block rendered
+              back at them since this only shows when isBuyer. */}
+          {isBuyer && <OfferContactLinks contact={offer.contact} />}
 
           {offer.status === "PENDING" && isBuyer && (
             <div className="mt-4 border-t border-border pt-4">
