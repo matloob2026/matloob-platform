@@ -67,7 +67,7 @@ function participantInclude() {
 }
 
 function resolveDisplayName(user: {
-  email: string;
+  email: string | null;
   profile: { displayName: string | null } | null;
 }): string {
   return user.profile?.displayName ?? user.email ?? "مستخدم مطلوب";
@@ -82,7 +82,7 @@ type ParticipantRow = {
   lastReadAt: Date | null;
   user: {
     id: string;
-    email: string;
+    email: string | null;
     profile: { displayName: string | null; avatar: { url: string } | null } | null;
   };
 };
@@ -93,7 +93,7 @@ function mapMessage(row: {
   senderId: string;
   body: string;
   createdAt: Date;
-  sender: { email: string; profile: { displayName: string | null; avatar: { url: string } | null } | null };
+  sender: { email: string | null; profile: { displayName: string | null; avatar: { url: string } | null } | null };
 }): MessageItem {
   return {
     id: row.id,
