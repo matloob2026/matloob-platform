@@ -32,6 +32,8 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@prisma/client";
+import { notificationService } from "@/services/notification.service";
 import type {
   Paginated,
   RequestDetail,
@@ -220,9 +222,21 @@ export interface RequestService {
    * Offer is created/withdrawn. Called by OfferService, never invoked
    * directly from a route handler — keeps the counter's single writer
    * obvious and prevents drift.
+   *
+   * Workflow Integration phase: accepts an optional
+   * `Prisma.TransactionClient` so OfferService can call this from
+   * inside its own `$transaction` (item 9 — offer status changes and
+   * their offerCount side-effect must commit/roll back together).
    */
-  syncOfferCount(requestId: string): Promise<void>;
+  syncOfferCount(requestId: string, client?: PrismaClientOrTx): Promise<void>;
 }
+
+/** Shared alias for "the global `prisma` client OR an open
+ * `Prisma.TransactionClient`" — every method below that a caller might
+ * need to run inside its own transaction takes this as an optional,
+ * defaulted-to-`prisma` parameter, same convention as
+ * NotificationService.notify(). */
+type PrismaClientOrTx = typeof prisma | Prisma.TransactionClient;
 
 // ---------------------------------------------------------------------
 // Localization helper — no shared LocalizationService exists yet in the
@@ -495,7 +509,7 @@ export class PrismaRequestService implements RequestService {
   async close(requestId: string, ownerId: string): Promise<void> {
     const existing = await prisma.request.findFirst({
       where: { id: requestId, deletedAt: null },
-      select: { ownerId: true, status: true },
+      select: { ownerId: true, status: true, title: true },
     });
     if (!existing || existing.ownerId !== ownerId) {
       throw new RequestServiceError("Request not found.", "NOT_FOUND");
@@ -507,9 +521,41 @@ export class PrismaRequestService implements RequestService {
       );
     }
 
-    await prisma.request.update({
-      where: { id: requestId },
-      data: { status: "CLOSED_BY_BUYER" },
+    // Workflow Integration phase (item 9): the status change and the
+    // "request closed" notifications to every supplier who still has
+    // a live PENDING offer on it must commit or roll back together —
+    // a supplier should never be notified of a closure that didn't
+    // actually happen, or silently NOT be notified of one that did.
+    //
+    // Notification type: there is no dedicated REQUEST_CLOSED value in
+    // the Prisma `NotificationType` enum, and adding one would require
+    // a schema migration this phase explicitly doesn't call for —
+    // SYSTEM_ANNOUNCEMENT is the schema's existing general-purpose
+    // type for exactly this kind of platform event.
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.request.update({
+        where: { id: requestId },
+        data: { status: "CLOSED_BY_BUYER" },
+      });
+
+      const pendingOffers = await tx.offer.findMany({
+        where: { requestId, status: "PENDING", deletedAt: null },
+        select: { supplierId: true },
+      });
+
+      for (const { supplierId } of pendingOffers) {
+        await notificationService.notify(
+          {
+            userId: supplierId,
+            type: "SYSTEM_ANNOUNCEMENT",
+            title: "تم إغلاق الطلب",
+            body: `قام صاحب الطلب "${existing.title}" بإغلاقه.`,
+            linkUrl: `/requests/${requestId}`,
+            metadata: { requestId },
+          },
+          tx
+        );
+      }
     });
   }
 
@@ -592,9 +638,9 @@ export class PrismaRequestService implements RequestService {
     };
   }
 
-  async syncOfferCount(requestId: string): Promise<void> {
-    const count = await prisma.offer.count({ where: { requestId, deletedAt: null } });
-    await prisma.request.update({ where: { id: requestId }, data: { offerCount: count } });
+  async syncOfferCount(requestId: string, client: PrismaClientOrTx = prisma): Promise<void> {
+    const count = await client.offer.count({ where: { requestId, deletedAt: null } });
+    await client.request.update({ where: { id: requestId }, data: { offerCount: count } });
   }
 
   async getFeaturedForHomepage(limit = 6): Promise<RequestSummary[]> {

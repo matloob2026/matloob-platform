@@ -163,6 +163,44 @@ export interface OfferWithRequest extends Offer {
   request: Pick<RequestSummary, "id" | "title" | "status" | "city" | "coverImageUrl">;
 }
 
+/**
+ * Workflow Integration phase: a message inside a Conversation. Sender
+ * identity is flattened (name/avatar) same as `Offer.supplier` above —
+ * pages render a chat bubble, they don't need the full `UserSummary`
+ * rating fields for that.
+ */
+export interface MessageItem {
+  id: string;
+  conversationId: string;
+  senderId: string;
+  senderName: string;
+  senderAvatarUrl?: string;
+  body: string;
+  createdAt: string;
+}
+
+/**
+ * Workflow Integration phase: one row in the signed-in user's
+ * conversations list (/conversations) — the other participant (not
+ * "yourself"), which request it's about, a preview of the last
+ * message, and how many of this viewer's messages in it are unread.
+ */
+export interface ConversationSummary {
+  id: string;
+  requestId: string;
+  requestTitle: string;
+  otherParticipant: Pick<UserSummary, "id" | "displayName" | "avatarUrl">;
+  lastMessage?: Pick<MessageItem, "body" | "senderId" | "createdAt">;
+  unreadCount: number;
+  updatedAt: string;
+}
+
+/** Workflow Integration phase: a single conversation's full thread —
+ * everything `ConversationSummary` has, plus every message in order. */
+export interface ConversationDetail extends ConversationSummary {
+  messages: MessageItem[];
+}
+
 export interface NotificationItem {
   id: string;
   type: string;

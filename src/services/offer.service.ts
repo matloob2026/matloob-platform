@@ -109,7 +109,19 @@ export interface OfferService {
    * same reasoning as `withdraw`.
    */
   update(offerId: string, supplierId: string, input: UpdateOfferInput): Promise<Offer>;
-  accept(offerId: string, buyerId: string): Promise<Offer>;
+  /**
+   * Workflow Integration phase: accepting an offer is the whole
+   * marketplace handoff moment — ACCEPTED status, the request moving
+   * to IN_PROGRESS, every other PENDING offer on the same request
+   * being auto-rejected (a buyer only ever picks one), a Conversation
+   * opened (or reused) between buyer and supplier, a first system
+   * message announcing the acceptance, and notifications to both the
+   * accepted supplier and every auto-rejected one — all inside a
+   * single `$transaction` (item 9: never leave this half-done).
+   * Returns the conversation's id too so the caller (the API route,
+   * then the client) can redirect straight into it.
+   */
+  accept(offerId: string, buyerId: string): Promise<{ offer: Offer; conversationId: string }>;
   reject(offerId: string, buyerId: string): Promise<Offer>;
   withdraw(offerId: string, supplierId: string): Promise<Offer>;
   listForRequest(requestId: string, status?: OfferStatus): Promise<Offer[]>;
@@ -259,25 +271,37 @@ export class PrismaOfferService implements OfferService {
       throw new OfferServiceError("لقد قدمت عرضًا على هذا الطلب من قبل.", "ALREADY_EXISTS");
     }
 
-    const created = await prisma.offer.create({
-      data: {
-        requestId: input.requestId,
-        supplierId: input.supplierId,
-        message,
-        price: input.price,
-      },
-      include: offerInclude(),
-    });
+    // Workflow Integration phase (item 9): creating the offer, syncing
+    // the request's denormalized offerCount, and notifying the buyer
+    // are one atomic unit — a supplier should never end up with an
+    // offer that exists but wasn't counted, or a buyer who was never
+    // notified of an offer that does exist.
+    const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const row = await tx.offer.create({
+        data: {
+          requestId: input.requestId,
+          supplierId: input.supplierId,
+          message,
+          price: input.price,
+        },
+        include: offerInclude(),
+      });
 
-    await requestService.syncOfferCount(input.requestId);
+      await requestService.syncOfferCount(input.requestId, tx);
 
-    await notificationService.notify({
-      userId: request.ownerId,
-      type: "NEW_OFFER",
-      title: "عرض جديد على طلبك",
-      body: "تلقى طلبك عرضًا جديدًا من أحد الموردين.",
-      linkUrl: `/requests/${input.requestId}`,
-      metadata: { requestId: input.requestId, offerId: created.id },
+      await notificationService.notify(
+        {
+          userId: request.ownerId,
+          type: "NEW_OFFER",
+          title: "عرض جديد على طلبك",
+          body: "تلقى طلبك عرضًا جديدًا من أحد الموردين.",
+          linkUrl: `/requests/${input.requestId}`,
+          metadata: { requestId: input.requestId, offerId: row.id },
+        },
+        tx
+      );
+
+      return row;
     });
 
     return mapToOffer(created);
@@ -320,10 +344,10 @@ export class PrismaOfferService implements OfferService {
     return mapToOffer(updated!);
   }
 
-  async accept(offerId: string, buyerId: string): Promise<Offer> {
+  async accept(offerId: string, buyerId: string): Promise<{ offer: Offer; conversationId: string }> {
     const offer = await prisma.offer.findFirst({
       where: { id: offerId, deletedAt: null },
-      include: { request: { select: { id: true, ownerId: true, status: true } } },
+      include: { request: { select: { id: true, ownerId: true, status: true, title: true } } },
     });
     if (!offer) {
       throw new OfferServiceError("العرض غير موجود.", "NOT_FOUND");
@@ -336,10 +360,29 @@ export class PrismaOfferService implements OfferService {
     }
 
     const requestId = offer.requestId;
+    const requestTitle = offer.request.title;
 
-    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // Workflow Integration phase (item 2 + item 9): everything below —
+    // accepting this offer, auto-rejecting every other still-PENDING
+    // offer on the same request, moving the request to IN_PROGRESS,
+    // opening the conversation, posting the first system message, and
+    // notifying every affected supplier — is one atomic unit. A buyer
+    // can only ever accept one offer per request, so this is also the
+    // one place competing offers get resolved.
+    const conversationId = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.offer.update({ where: { id: offerId }, data: { status: "ACCEPTED" } });
       await tx.request.update({ where: { id: requestId }, data: { status: "IN_PROGRESS" } });
+
+      const competingOffers: { id: string; supplierId: string }[] = await tx.offer.findMany({
+        where: { requestId, status: "PENDING", id: { not: offerId }, deletedAt: null },
+        select: { id: true, supplierId: true },
+      });
+      if (competingOffers.length > 0) {
+        await tx.offer.updateMany({
+          where: { id: { in: competingOffers.map((c) => c.id) } },
+          data: { status: "REJECTED" },
+        });
+      }
 
       // Open (or reuse, if one already exists for this offer) the
       // conversation between buyer and supplier — Conversation.offerId
@@ -356,19 +399,55 @@ export class PrismaOfferService implements OfferService {
         ],
         skipDuplicates: true,
       });
-    });
 
-    await notificationService.notify({
-      userId: offer.supplierId,
-      type: "OFFER_ACCEPTED",
-      title: "تم قبول عرضك",
-      body: "قام صاحب الطلب بقبول عرضك. يمكنك الآن التواصل معه مباشرة.",
-      linkUrl: `/requests/${requestId}`,
-      metadata: { requestId, offerId },
+      // First system message announcing the acceptance. Message.senderId
+      // is a required, real User reference in the schema (no nullable
+      // "system" sender exists) — attributed to the buyer, since
+      // accepting is their action. Guarded by a message-count check so
+      // re-running this on a conversation that (unexpectedly) already
+      // has messages never posts a duplicate announcement.
+      const existingMessageCount = await tx.message.count({ where: { conversationId: conversation.id } });
+      if (existingMessageCount === 0) {
+        await tx.message.create({
+          data: {
+            conversationId: conversation.id,
+            senderId: buyerId,
+            body: "تم قبول العرض ويمكن للطرفين بدء التواصل.",
+          },
+        });
+      }
+
+      await notificationService.notify(
+        {
+          userId: offer.supplierId,
+          type: "OFFER_ACCEPTED",
+          title: "تم قبول عرضك",
+          body: "قام صاحب الطلب بقبول عرضك. يمكنك الآن التواصل معه مباشرة.",
+          linkUrl: `/conversations/${conversation.id}`,
+          metadata: { requestId, offerId, conversationId: conversation.id },
+        },
+        tx
+      );
+
+      for (const competing of competingOffers) {
+        await notificationService.notify(
+          {
+            userId: competing.supplierId,
+            type: "OFFER_REJECTED",
+            title: "تم رفض عرضك",
+            body: `تم قبول عرض آخر على الطلب "${requestTitle}".`,
+            linkUrl: `/requests/${requestId}`,
+            metadata: { requestId, offerId: competing.id },
+          },
+          tx
+        );
+      }
+
+      return conversation.id;
     });
 
     const updated = await findOfferRow(offerId);
-    return mapToOffer(updated!);
+    return { offer: mapToOffer(updated!), conversationId };
   }
 
   async reject(offerId: string, buyerId: string): Promise<Offer> {
@@ -386,15 +465,22 @@ export class PrismaOfferService implements OfferService {
       throw new OfferServiceError("تم البت في هذا العرض من قبل.", "INVALID_STATUS_TRANSITION");
     }
 
-    await prisma.offer.update({ where: { id: offerId }, data: { status: "REJECTED" } });
-
-    await notificationService.notify({
-      userId: offer.supplierId,
-      type: "OFFER_REJECTED",
-      title: "تم رفض عرضك",
-      body: "قام صاحب الطلب برفض عرضك على هذا الطلب.",
-      linkUrl: `/requests/${offer.requestId}`,
-      metadata: { requestId: offer.requestId, offerId },
+    // Workflow Integration phase (item 9): status change + notification
+    // together — a supplier should never fail to be notified of a
+    // rejection that did happen (or vice versa).
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.offer.update({ where: { id: offerId }, data: { status: "REJECTED" } });
+      await notificationService.notify(
+        {
+          userId: offer.supplierId,
+          type: "OFFER_REJECTED",
+          title: "تم رفض عرضك",
+          body: "قام صاحب الطلب برفض عرضك على هذا الطلب.",
+          linkUrl: `/requests/${offer.requestId}`,
+          metadata: { requestId: offer.requestId, offerId },
+        },
+        tx
+      );
     });
 
     const updated = await findOfferRow(offerId);
@@ -413,8 +499,13 @@ export class PrismaOfferService implements OfferService {
       throw new OfferServiceError("لا يمكن سحب هذا العرض في حالته الحالية.", "INVALID_STATUS_TRANSITION");
     }
 
-    await prisma.offer.update({ where: { id: offerId }, data: { status: "WITHDRAWN" } });
-    await requestService.syncOfferCount(offer.requestId);
+    // Workflow Integration phase (item 9): status change + offerCount
+    // resync together — the request's displayed offer count must never
+    // drift from the offers that actually still exist.
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.offer.update({ where: { id: offerId }, data: { status: "WITHDRAWN" } });
+      await requestService.syncOfferCount(offer.requestId, tx);
+    });
 
     const updated = await findOfferRow(offerId);
     return mapToOffer(updated!);

@@ -3,7 +3,9 @@
 import { useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { User, ClipboardList, HandCoins, Bell, Bookmark, Settings, LogOut, ChevronLeft, ChevronDown } from "lucide-react";
+import { User, ClipboardList, HandCoins, MessageCircle, Bell, Bookmark, Settings, LogOut, ChevronLeft, ChevronDown } from "lucide-react";
+import { apiFetch } from "@/lib/api-client";
+import type { NotificationItem } from "@/types/domain";
 
 export function UserMenu({
   name,
@@ -15,6 +17,7 @@ export function UserMenu({
   imageUrl?: string | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -27,14 +30,37 @@ export function UserMenu({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Workflow Integration phase (item 4): "unread counters must update
+  // correctly" — fetched once on mount (this component only ever
+  // mounts for an authenticated viewer, see SiteHeader's
+  // status === "authenticated" gate) and re-fetched on every full page
+  // navigation, since UserMenu remounts fresh on each page the same
+  // way the rest of this app relies on a full re-render instead of a
+  // realtime layer.
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch<{ data: NotificationItem[] }>("/api/notifications?unreadOnly=true")
+      .then((res) => {
+        if (!cancelled) setUnreadCount(res.data.length);
+      })
+      .catch(() => {
+        // Non-critical UI affordance — a failed count fetch shouldn't
+        // surface an error toast to the user.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const initial = name.trim().charAt(0).toUpperCase() || "؟";
 
   const menuItems = [
     { href: "/profile", label: "الملف الشخصي", Icon: User },
     { href: "/my-requests", label: "طلباتي", Icon: ClipboardList },
     { href: "/my-offers", label: "عروضي", Icon: HandCoins },
+    { href: "/conversations", label: "المحادثات", Icon: MessageCircle },
     { href: "/saved-requests", label: "المحفوظات", Icon: Bookmark },
-    { href: "/notifications", label: "الإشعارات", Icon: Bell },
+    { href: "/notifications", label: "الإشعارات", Icon: Bell, badge: unreadCount },
     { href: "/account-settings", label: "إعدادات الحساب", Icon: Settings },
   ];
 
@@ -108,7 +134,7 @@ export function UserMenu({
 
         {/* Menu items */}
         <div className="border-t border-border px-3 py-3">
-          {menuItems.map(({ href, label, Icon }) => (
+          {menuItems.map(({ href, label, Icon, badge }) => (
             <Link
               key={href}
               href={href}
@@ -118,6 +144,11 @@ export function UserMenu({
             >
               <Icon size={19} strokeWidth={1.8} className="text-text-500" />
               {label}
+              {!!badge && (
+                <span className="mr-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white">
+                  {badge}
+                </span>
+              )}
             </Link>
           ))}
         </div>

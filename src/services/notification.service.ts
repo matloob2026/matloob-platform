@@ -16,6 +16,16 @@
 import type { NotificationItem } from "@/types/domain";
 import { prisma } from "@/lib/prisma";
 import type { InputJsonValue } from "@prisma/client/runtime/library";
+import type { Prisma } from "@prisma/client";
+
+/** Workflow Integration phase: `notify()` accepts either the global
+ * `prisma` client or a `Prisma.TransactionClient` — item 9 requires
+ * every workflow action (offer accept, request close, new message,
+ * etc.) to write its notifications atomically alongside the rest of
+ * that action's writes, not as a separate call after the transaction
+ * has already committed. Defaults to the global client so every
+ * existing, non-transactional caller keeps working unchanged. */
+export type PrismaClientOrTx = typeof prisma | Prisma.TransactionClient;
 
 export type NotificationType =
   | "NEW_OFFER"
@@ -40,7 +50,7 @@ export interface NotifyInput {
 }
 
 export interface NotificationService {
-  notify(input: NotifyInput): Promise<void>;
+  notify(input: NotifyInput, client?: PrismaClientOrTx): Promise<void>;
   listForUser(userId: string, unreadOnly?: boolean): Promise<NotificationItem[]>;
   markRead(notificationId: string, userId: string): Promise<void>;
 }
@@ -81,10 +91,10 @@ function toInputJson(metadata: Record<string, unknown> | undefined): InputJsonVa
 }
 
 export class PrismaNotificationService implements NotificationService {
-  async notify(input: NotifyInput): Promise<void> {
+  async notify(input: NotifyInput, client: PrismaClientOrTx = prisma): Promise<void> {
     const channels = input.channels ?? ["IN_APP"];
     const metadata = toInputJson(input.metadata);
-    await prisma.notification.createMany({
+    await client.notification.createMany({
       data: channels.map((channel) => ({
         userId: input.userId,
         type: input.type,

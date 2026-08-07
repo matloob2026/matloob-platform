@@ -5,11 +5,16 @@ import { offerService, OfferServiceError, offerServiceErrorStatus } from "@/serv
 import type { ApiError } from "@/types/domain";
 
 /**
- * Offers module (Stage 1): the buyer (request owner) accepts a
- * PENDING offer. Runs the Offer->ACCEPTED / Request->IN_PROGRESS /
- * Conversation transaction in OfferService.accept — this route is
- * intentionally thin, same shape as
+ * Offers module: the buyer (request owner) accepts a PENDING offer.
+ * Runs the full accept transaction in OfferService.accept — offer
+ * ACCEPTED, request IN_PROGRESS, every competing PENDING offer
+ * auto-REJECTED, conversation opened, first system message, and every
+ * notification — this route is intentionally thin, same shape as
  * src/app/api/requests/[id]/close/route.ts.
+ *
+ * Workflow Integration phase: the response now also carries
+ * `conversationId` so the client can redirect the buyer straight into
+ * the newly-opened conversation (item 2's "redirect both parties").
  */
 export async function POST(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,10 +25,12 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   }
 
   try {
-    const accepted = await offerService.accept(id, session.user.id);
+    const { offer: accepted, conversationId } = await offerService.accept(id, session.user.id);
     revalidatePath(`/requests/${accepted.requestId}`);
     revalidatePath("/my-requests");
-    return NextResponse.json({ data: accepted }, { status: 200 });
+    revalidatePath("/my-offers");
+    revalidatePath(`/conversations/${conversationId}`);
+    return NextResponse.json({ data: { ...accepted, conversationId } }, { status: 200 });
   } catch (err) {
     if (err instanceof OfferServiceError) {
       const error: ApiError = { code: err.code, message: err.message };

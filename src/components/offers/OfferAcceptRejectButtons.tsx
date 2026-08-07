@@ -33,9 +33,15 @@ export function OfferAcceptRejectButtons({ offer }: { offer: Offer }) {
 
     setIsBusy(true);
     try {
-      await apiFetch(`/api/offers/${offer.id}/accept`, { method: "POST" });
-      showToast("تم قبول العرض", "success");
-      router.refresh();
+      const res = await apiFetch<{ data: { conversationId: string } }>(`/api/offers/${offer.id}/accept`, {
+        method: "POST",
+      });
+      showToast("تم قبول العرض. جارٍ نقلك إلى المحادثة...", "success");
+      // Workflow Integration phase (item 2): redirect the buyer straight
+      // into the conversation that was just opened, instead of just
+      // refreshing this page — router.push (not refresh) since we're
+      // navigating away entirely.
+      router.push(`/conversations/${res.data.conversationId}`);
     } catch (err) {
       const message = err instanceof ApiRequestError ? err.error.message : "تعذر قبول العرض.";
       showToast(message, "error");
