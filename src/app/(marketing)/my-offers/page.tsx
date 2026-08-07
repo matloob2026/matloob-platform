@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth/auth";
 import { offerService } from "@/services/offer.service";
 import { Card } from "@/components/ui/Card";
 import { OfferStatusBadge } from "@/components/offers/OfferStatusBadge";
-import { MyOfferWithdrawButton } from "@/components/offers/MyOfferWithdrawButton";
+import { EditableOfferBody } from "@/components/offers/EditableOfferBody";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export const metadata: Metadata = {
@@ -13,11 +14,16 @@ export const metadata: Metadata = {
 };
 
 /**
- * Offers module (Stage 1): the supplier-facing dashboard counterpart
- * to /my-requests — every offer the signed-in user has ever
- * submitted, across every request, newest first. Same page shape
- * (Suspense-free server component, redirect-if-signed-out, a Card per
- * item) as src/app/(marketing)/my-requests/page.tsx on purpose.
+ * Offers module: the supplier-facing dashboard counterpart to
+ * /my-requests — every offer the signed-in user has ever submitted,
+ * across every request, newest first (`offerService.listMine` already
+ * orders by `createdAt: "desc"`).
+ *
+ * Offers Integration phase redesign: each row now also shows the
+ * request's thumbnail and city (via `OfferWithRequest.request`, which
+ * now carries them — see src/types/domain.ts), and price/message +
+ * Edit/Withdraw are delegated to <EditableOfferBody canEdit>, the
+ * same component MyOfferStatusCard and the Offer Details page use.
  */
 export default async function MyOffersPage() {
   const session = await auth();
@@ -50,29 +56,43 @@ export default async function MyOffersPage() {
           <div className="space-y-4">
             {items.map((offer) => (
               <Card key={offer.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <Link
-                      href={`/requests/${offer.request.id}`}
-                      className="font-display text-base font-extrabold text-navy-950 hover:text-teal-700"
-                    >
-                      {offer.request.title}
-                    </Link>
-                    {offer.price != null && (
-                      <p className="mt-1 text-sm font-extrabold text-teal-700">{offer.price}</p>
-                    )}
-                    <p className="mt-1.5 whitespace-pre-line text-sm text-text-700">{offer.message}</p>
-                    <p className="mt-1.5 text-xs text-text-400">
-                      {new Date(offer.createdAt).toLocaleDateString("ar-SA")}
+                <div className="flex items-start gap-3">
+                  {offer.request.coverImageUrl ? (
+                    <Image
+                      src={offer.request.coverImageUrl}
+                      alt={offer.request.title}
+                      width={64}
+                      height={64}
+                      className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-lg bg-surface-muted text-xs text-text-400">
+                      لا صورة
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={`/requests/${offer.request.id}`}
+                        className="font-display text-base font-extrabold text-navy-950 hover:text-teal-700"
+                      >
+                        {offer.request.title}
+                      </Link>
+                      <OfferStatusBadge status={offer.status} />
+                    </div>
+                    <p className="mt-0.5 text-xs text-text-400">
+                      {offer.request.city ? offer.request.city.name.current : "بدون مدينة"} ·{" "}
+                      قُدِّم بتاريخ {new Date(offer.createdAt).toLocaleDateString("ar-SA")}
                     </p>
                   </div>
-                  <OfferStatusBadge status={offer.status} />
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-border pt-3">
+
+                <EditableOfferBody offer={offer} canEdit />
+
+                <div className="mt-3 border-t border-border pt-3">
                   <Link href={`/offers/${offer.id}`} className="text-xs font-semibold text-teal-700 hover:underline">
                     عرض التفاصيل
                   </Link>
-                  {offer.status === "PENDING" && <MyOfferWithdrawButton offerId={offer.id} />}
                 </div>
               </Card>
             ))}

@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { OfferStatusBadge } from "@/components/offers/OfferStatusBadge";
 import { OfferAcceptRejectButtons } from "@/components/offers/OfferAcceptRejectButtons";
-import { MyOfferWithdrawButton } from "@/components/offers/MyOfferWithdrawButton";
+import { EditableOfferBody } from "@/components/offers/EditableOfferBody";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 
 export async function generateMetadata({
@@ -104,10 +104,7 @@ export default async function OfferDetailsPage({ params }: { params: Promise<{ i
             <OfferStatusBadge status={offer.status} />
           </div>
 
-          {offer.price != null && (
-            <p className="mt-4 text-lg font-extrabold text-teal-700">{offer.price}</p>
-          )}
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-text-700">{offer.message}</p>
+          <EditableOfferBody offer={offer} canEdit={isSupplier} />
           <p className="mt-3 text-xs text-text-400">
             قُدِّم بتاريخ {new Date(offer.createdAt).toLocaleDateString("ar-SA")}
           </p>
@@ -115,11 +112,6 @@ export default async function OfferDetailsPage({ params }: { params: Promise<{ i
           {offer.status === "PENDING" && isBuyer && (
             <div className="mt-4 border-t border-border pt-4">
               <OfferAcceptRejectButtons offer={offer} />
-            </div>
-          )}
-          {offer.status === "PENDING" && isSupplier && (
-            <div className="mt-4 border-t border-border pt-4">
-              <MyOfferWithdrawButton offerId={offer.id} />
             </div>
           )}
           {offer.status === "ACCEPTED" && (

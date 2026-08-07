@@ -153,9 +153,14 @@ export interface Offer {
  * status (e.g. a PENDING offer whose request has since moved to
  * IN_PROGRESS via a *different* accepted offer means this one no
  * longer has a live chance, which the UI should be able to reflect).
+ *
+ * Offers Integration phase: also carries `city` and `coverImageUrl` —
+ * the redesigned My Offers page shows each request's thumbnail and
+ * city alongside the offer, so it doesn't need a second round-trip
+ * per row.
  */
 export interface OfferWithRequest extends Offer {
-  request: Pick<RequestSummary, "id" | "title" | "status">;
+  request: Pick<RequestSummary, "id" | "title" | "status" | "city" | "coverImageUrl">;
 }
 
 export interface NotificationItem {

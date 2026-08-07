@@ -15,6 +15,12 @@ import { requestService } from "@/services/request.service";
  * Every PUBLISHED request appears — Featured is a priority/ordering
  * flag only (featured requests sort first), never a visibility
  * filter, matching the exact same rule the homepage section follows.
+ *
+ * Offers Integration phase: each card now also shows its offer count
+ * (item 2 of that phase) — `offerCount` is synced server-side by
+ * OfferService on every create/withdraw, so this is always current on
+ * page load/refresh. Search/filter UI is a separate, not-yet-started
+ * phase and is deliberately not part of this page yet.
  */
 
 export const metadata: Metadata = {
@@ -54,10 +60,15 @@ export default async function AllRequestsPage({
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.coverImageUrl} alt={r.title} className="mb-3 h-32 w-full rounded-lg object-cover" />
                   )}
-                  <p className="text-xs text-text-400">
-                    {r.category.name.current}
-                    {r.city ? ` · ${r.city.name.current}` : ""}
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs text-text-400">
+                      {r.category.name.current}
+                      {r.city ? ` · ${r.city.name.current}` : ""}
+                    </p>
+                    <span className="whitespace-nowrap text-xs font-bold text-teal-700">
+                      {r.offerCount} {r.offerCount === 1 ? "عرض" : "عروض"}
+                    </span>
+                  </div>
                   <p className="mt-1 font-bold text-navy-950">{r.title}</p>
                   <p className="mt-1 line-clamp-2 text-sm text-text-500">{r.description}</p>
                 </Card>

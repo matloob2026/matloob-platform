@@ -26,7 +26,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
-import { requestService } from "@/services/request.service";
+import { requestService, toLocalized } from "@/services/request.service";
 import { notificationService } from "@/services/notification.service";
 import type { Offer, OfferStatus, OfferWithRequest, Paginated, RequestStatus } from "@/types/domain";
 
@@ -81,6 +81,18 @@ export interface CreateOfferInput {
   price?: number;
 }
 
+/**
+ * Offers Integration phase: partial update for an existing PENDING
+ * offer's message/price — the supplier corrects or improves their
+ * offer without withdrawing and resubmitting (which would lose their
+ * place and reset `createdAt`). Both fields optional/independent, same
+ * "only send what changed" convention as UpdateRequestInput.
+ */
+export interface UpdateOfferInput {
+  message?: string;
+  price?: number | null;
+}
+
 export interface ListMyOffersFilter {
   status?: OfferStatus;
   page?: number;
@@ -89,6 +101,14 @@ export interface ListMyOffersFilter {
 
 export interface OfferService {
   create(input: CreateOfferInput): Promise<Offer>;
+  /**
+   * Offers Integration phase: supplier-only edit of their own PENDING
+   * offer — same record, no new row created (schema's
+   * `@@unique([requestId, supplierId])` means there could never be a
+   * second one anyway). Rejected once the offer is no longer PENDING,
+   * same reasoning as `withdraw`.
+   */
+  update(offerId: string, supplierId: string, input: UpdateOfferInput): Promise<Offer>;
   accept(offerId: string, buyerId: string): Promise<Offer>;
   reject(offerId: string, buyerId: string): Promise<Offer>;
   withdraw(offerId: string, supplierId: string): Promise<Offer>;
@@ -126,15 +146,50 @@ function offerInclude() {
 
 type OfferRow = Awaited<ReturnType<typeof findOfferRow>>;
 
-/** Row shape for `listMine` below — `offerInclude()` plus the owning
- * request's id/title/status, matching `OfferWithRequest`'s extra
- * `request` field (see src/types/domain.ts). Declared explicitly
- * rather than inferred from the query, the same way `OfferRow` above
- * is derived from `findOfferRow` — keeps this file's typing style
- * consistent even though the specific inference path differs. */
+/** Row shape for `listMine`/`getById` below — `offerInclude()` plus
+ * the owning request's id/title/status/city/media, matching
+ * `OfferWithRequest`'s extra `request` field (see
+ * src/types/domain.ts). Declared explicitly rather than inferred from
+ * the query, the same way `OfferRow` above is derived from
+ * `findOfferRow` — keeps this file's typing style consistent even
+ * though the specific inference path differs. */
 type MyOfferRow = NonNullable<OfferRow> & {
-  request: { id: string; title: string; status: RequestStatus };
+  request: {
+    id: string;
+    title: string;
+    status: RequestStatus;
+    city: { id: string; translations: { locale: string; name: string }[] } | null;
+    media: { url: string }[];
+  };
 };
+
+/** Shared `request` sub-select for `listMine`/`getById` — city
+ * (for localized display) and the first cover image only (same
+ * "media[0]" convention `mapToSummary` uses in request.service.ts),
+ * not the full request record. */
+function offerRequestSelect() {
+  return {
+    id: true,
+    title: true,
+    status: true,
+    city: { include: { translations: true } },
+    media: { orderBy: { sortOrder: "asc" as const }, take: 1, select: { url: true } },
+  } as const;
+}
+
+/** Maps `MyOfferRow.request` onto `OfferWithRequest["request"]` —
+ * reuses `toLocalized` (exported from request.service.ts) so the
+ * city name resolves the exact same way every other page in the app
+ * resolves a city's localized name. */
+function mapOfferRequest(request: MyOfferRow["request"]): OfferWithRequest["request"] {
+  return {
+    id: request.id,
+    title: request.title,
+    status: request.status,
+    city: request.city ? { id: request.city.id, name: toLocalized(request.city.translations) } : undefined,
+    coverImageUrl: request.media[0]?.url,
+  };
+}
 
 async function findOfferRow(id: string) {
   return prisma.offer.findFirst({
@@ -226,6 +281,43 @@ export class PrismaOfferService implements OfferService {
     });
 
     return mapToOffer(created);
+  }
+
+  async update(offerId: string, supplierId: string, input: UpdateOfferInput): Promise<Offer> {
+    const offer = await prisma.offer.findFirst({ where: { id: offerId, deletedAt: null } });
+    if (!offer) {
+      throw new OfferServiceError("العرض غير موجود.", "NOT_FOUND");
+    }
+    if (offer.supplierId !== supplierId) {
+      throw new OfferServiceError("لا تملك صلاحية تعديل هذا العرض.", "FORBIDDEN");
+    }
+    if (offer.status !== "PENDING") {
+      throw new OfferServiceError("لا يمكن تعديل عرض تم البت فيه.", "INVALID_STATUS_TRANSITION");
+    }
+
+    const data: { message?: string; price?: number | null } = {};
+
+    if (input.message !== undefined) {
+      const message = input.message.trim();
+      if (!message) {
+        throw new OfferServiceError("الرجاء كتابة رسالة مع العرض.", "VALIDATION_ERROR");
+      }
+      data.message = message;
+    }
+
+    if (input.price !== undefined) {
+      if (input.price != null && input.price < 0) {
+        throw new OfferServiceError("السعر غير صالح.", "VALIDATION_ERROR");
+      }
+      data.price = input.price;
+    }
+
+    if (Object.keys(data).length > 0) {
+      await prisma.offer.update({ where: { id: offerId }, data });
+    }
+
+    const updated = await findOfferRow(offerId);
+    return mapToOffer(updated!);
   }
 
   async accept(offerId: string, buyerId: string): Promise<Offer> {
@@ -348,7 +440,7 @@ export class PrismaOfferService implements OfferService {
 
     const include = {
       ...offerInclude(),
-      request: { select: { id: true, title: true, status: true } },
+      request: { select: offerRequestSelect() },
     } as const;
 
     const [rows, totalItems] = await Promise.all([
@@ -365,7 +457,7 @@ export class PrismaOfferService implements OfferService {
     return {
       items: (rows as MyOfferRow[]).map((r) => ({
         ...mapToOffer(r),
-        request: { id: r.request.id, title: r.request.title, status: r.request.status },
+        request: mapOfferRequest(r.request),
       })),
       page,
       pageSize,
@@ -379,7 +471,7 @@ export class PrismaOfferService implements OfferService {
       where: { id: offerId, deletedAt: null },
       include: {
         ...offerInclude(),
-        request: { select: { id: true, title: true, status: true } },
+        request: { select: offerRequestSelect() },
       },
     });
     if (!row) return null;
@@ -387,7 +479,7 @@ export class PrismaOfferService implements OfferService {
     const typed = row as MyOfferRow;
     return {
       ...mapToOffer(typed),
-      request: { id: typed.request.id, title: typed.request.title, status: typed.request.status },
+      request: mapOfferRequest(typed.request),
     };
   }
 }

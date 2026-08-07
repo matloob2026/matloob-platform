@@ -148,6 +148,23 @@ export interface ListMyRequestsFilter {
   pageSize?: number;
 }
 
+/**
+ * Requests search module: filters for the public "/requests" browse
+ * page's real keyword/category/city/budget search. Deliberately its
+ * own interface rather than reusing ListRequestsFilter, which requires
+ * a `countryId` (list() is always country-scoped) — this search is
+ * platform-wide, same scope as listAllPublished/getFeaturedForHomepage.
+ */
+export interface SearchRequestsFilter {
+  search?: string;
+  categoryId?: string;
+  cityId?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  page?: number;
+  pageSize?: number;
+}
+
 export interface RequestService {
   create(input: CreateRequestInput): Promise<RequestDetail>;
   update(requestId: string, ownerId: string, input: UpdateRequestInput): Promise<RequestDetail>;
@@ -179,6 +196,26 @@ export interface RequestService {
   listAllPublished(page?: number, pageSize?: number): Promise<Paginated<RequestSummary>>;
 
   /**
+   * Requests search module: real keyword/category/city/budget search
+   * for the public "/requests" browse page. Purely additive —
+   * listAllPublished(page, pageSize) is left completely untouched so
+   * its existing call sites (homepage + the no-filter case on
+   * /requests) are never at risk of a signature-change regression.
+   */
+  searchPublished(filter?: SearchRequestsFilter): Promise<Paginated<RequestSummary>>;
+
+  /**
+   * Saved Requests module: the buyer/supplier's own "المحفوظات" list —
+   * every request they've favorited (see FavoriteService.toggle),
+   * newest-favorited first. Lives on RequestService (not
+   * FavoriteService) because it needs the same requestInclude()/
+   * mapToSummary() shape as every other request listing here;
+   * FavoriteService stays a thin toggle/lookup helper over the
+   * Favorite table only.
+   */
+  listSaved(userId: string, page?: number, pageSize?: number): Promise<Paginated<RequestSummary>>;
+
+  /**
    * Increments the denormalized `offerCount` on Request whenever an
    * Offer is created/withdrawn. Called by OfferService, never invoked
    * directly from a route handler — keeps the counter's single writer
@@ -197,7 +234,7 @@ export interface RequestService {
 
 const DEFAULT_LOCALE: Locale = "ar";
 
-function toLocalized(translations: { locale: string; name: string }[]): Localized {
+export function toLocalized(translations: { locale: string; name: string }[]): Localized {
   const preferred = translations.find((t) => t.locale === DEFAULT_LOCALE);
   const current = preferred?.name ?? translations[0]?.name ?? "";
   return {
@@ -592,6 +629,102 @@ export class PrismaRequestService implements RequestService {
 
     return {
       items: rows.map((r: NonNullable<RequestRow>) => mapToSummary(r)),
+      page,
+      pageSize,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+    };
+  }
+
+  async searchPublished(filter: SearchRequestsFilter = {}): Promise<Paginated<RequestSummary>> {
+    const page = filter.page ?? 1;
+    const pageSize = filter.pageSize ?? 12;
+
+    // Every optional condition below is pushed into a single `AND`
+    // array instead of spread as sibling keys — `search` and the two
+    // budget bounds each need their own `OR` clause, and Prisma (like
+    // any plain JS object) can only hold one `OR` key per level, so
+    // spreading multiple `{ OR: [...] }` objects into the same object
+    // would silently overwrite all but the last one. Wrapping each in
+    // `AND` keeps them independent regardless of which filters are
+    // active at once.
+    // Untyped (Record<string, unknown>), same as `where` below and
+    // every other query builder in this file — Prisma's generated
+    // where-input types aren't available to annotate against in this
+    // sandbox (prisma generate is blocked; see file header).
+    const conditions: Record<string, unknown>[] = [];
+    if (filter.categoryId) conditions.push({ categoryId: filter.categoryId });
+    if (filter.cityId) conditions.push({ cityId: filter.cityId });
+    if (filter.search) {
+      conditions.push({
+        OR: [
+          { title: { contains: filter.search, mode: "insensitive" as const } },
+          { description: { contains: filter.search, mode: "insensitive" as const } },
+        ],
+      });
+    }
+    // Budget is a range on the request itself (budgetMin..budgetMax,
+    // either end optional) — a request matches a searched budget range
+    // if the two ranges overlap. A request with no budget set on the
+    // relevant end is treated as unbounded (always matches), since "no
+    // budget stated" shouldn't be excluded by a buyer's rough filter.
+    if (filter.budgetMin != null) {
+      conditions.push({ OR: [{ budgetMax: null }, { budgetMax: { gte: filter.budgetMin } }] });
+    }
+    if (filter.budgetMax != null) {
+      conditions.push({ OR: [{ budgetMin: null }, { budgetMin: { lte: filter.budgetMax } }] });
+    }
+
+    const where: Record<string, unknown> = {
+      deletedAt: null,
+      status: "PUBLISHED" as const,
+      ...(conditions.length > 0 ? { AND: conditions } : {}),
+    };
+
+    const [rows, totalItems] = await Promise.all([
+      prisma.request.findMany({
+        where,
+        include: requestInclude(),
+        orderBy: [{ isFeatured: "desc" }, { publishedAt: "desc" }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.request.count({ where }),
+    ]);
+
+    return {
+      items: rows.map((r: NonNullable<RequestRow>) => mapToSummary(r)),
+      page,
+      pageSize,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / pageSize)),
+    };
+  }
+
+  async listSaved(userId: string, page = 1, pageSize = 20): Promise<Paginated<RequestSummary>> {
+    // Queried from the Favorite side, not Request.findMany with a
+    // `favorites: { some: { userId } }` filter — ordering by "most
+    // recently saved" needs Favorite.createdAt, which isn't reachable
+    // as an orderBy target on Request through a `some` filter. Not
+    // filtered to PUBLISHED-only on purpose — if a saved request later
+    // closes/expires, the user should still see it in their saved list
+    // (same "show everything, any status" reasoning as listMine for a
+    // request's own owner).
+    const where = { userId, request: { deletedAt: null } };
+
+    const [favoriteRows, totalItems] = await Promise.all([
+      prisma.favorite.findMany({
+        where,
+        include: { request: { include: requestInclude() } },
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.favorite.count({ where }),
+    ]);
+
+    return {
+      items: favoriteRows.map((f: { request: NonNullable<RequestRow> }) => mapToSummary(f.request)),
       page,
       pageSize,
       totalItems,
